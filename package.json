@@ -28,7 +28,6 @@
     "prepack": "npm run build && oclif manifest && oclif readme",
     "postpack": "shx rm -f oclif.manifest.json",
     "prepare": "npm run build",
-    "posttest": "npm run lint",
     "version": "oclif readme && git add README.md"
   },
   "oclif": {
@@ -53,10 +52,7 @@
   },
   "devDependencies": {
     "@oclif/prettier-config": "^0.2.1",
-    "@oclif/test": "^3",
-    "@types/chai": "^4",
     "@types/node": "^18",
-    "chai": "^4",
     "eslint": "^8",
     "eslint-config-oclif": "^5",
     "eslint-config-oclif-typescript": "^3",

@@ -48,6 +48,7 @@
     }
   },
   "dependencies": {
+    "@inquirer/select": "^2.0.0",
     "@oclif/core": "^3",
     "@oclif/plugin-help": "^6",
     "@oclif/plugin-plugins": "^4",

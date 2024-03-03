@@ -2,8 +2,10 @@ import { Command } from "@oclif/core";
 import { access, appendFile, readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
 
-import { secretsSchema } from "../schemas/configuration.js";
-
+export const secretsSchema = z.object({
+    CPI_USERNAME: z.string(),
+    CPI_PASSWORD: z.string(),
+});
 
 export async function getSecrets(command: Command) {
     // Read the .env file
@@ -40,7 +42,7 @@ export async function setSecrets(command: Command, secrets: z.infer<typeof secre
     }
 
     // Write the secrets to the .env file
-    await appendFile('.env', Object.entries(secrets).map(([key, value]) => `${key}=${value}`).join('\n'));
+    await appendFile('.env', Object.entries(secrets).map(([key, value]) => `${key}="${value}"`).join('\n'));
 
     // Log the result
     if (envFileExists) {

@@ -1,9 +1,11 @@
+import { input, password, select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 import { access, appendFile, readFile, writeFile, } from 'node:fs/promises';
 import { z } from 'zod';
 
-import { secretsSchema } from '../schemas/configuration.js';
-import { setSecrets } from '../utils/secrets.js';
+import { cpiEnvironment, cpiRegions, setConfiguration } from '../utils/configuration.js';
+import { testCredentials } from '../utils/cpi.js';
+import { secretsSchema, setSecrets } from '../utils/secrets.js';
 
 export default class Init extends Command {
   static description = 'Initialize the the cpi-configuration-versions project.';
@@ -15,15 +17,60 @@ export default class Init extends Command {
   public async run() {
     this.log('Welcome to the setup for a new SAP CPI configuration monitoring setup!\n');
 
+    const projectName = await input({ message: 'Project Name:', default: 'cpi-configuration-versions' });
+
     // Gather the secrets from the user
-    this.log('-- 🔓 Local Environment Secret Setup 🔓 --');
+    this.log('\n-- 🔓 Local Environment Secret Setup 🔓 --\n');
+
+    this.log('Provide credentials for SAP CPI (OAuth later on, Basic auth for now).');
     const secrets = {
-      'CPI_URL': await ux.prompt('CPI OData API Endpoint (ex. "https://xxxxxxx-tmn.xxx.eu1.hana.ondemand.com/api/v1")'),
-      'CPI_USERNAME': await ux.prompt('CPI OData API Username'),
-      'CPI_PASSWORD': await ux.prompt('CPI OData API Password', { type: 'mask' }),
+      'CPI_USERNAME': await input({ message: 'CPI OData API Username:' }),
+      'CPI_PASSWORD': await password({ message: 'CPI OData API Password:' }),
     } satisfies z.infer<typeof secretsSchema>;
 
     this.log('');
+
+    // Gather the initial environment details from the user
+    this.log('Provide the environment details for the first CPI instance to monitor.');
+    this.log('You can add more instances after the setup is complete.\n');
+
+    this.log('When entering the CPI instance URL, please follow this format:');
+    this.log('https://{Account Short Name}-tmn.{SSL Host}.{Region}.hana.ondemand.com/api/v1');
+    this.log('Where:');
+    this.log('- {Account Short Name} is your specific account identifier.');
+    this.log('- {SSL Host} typically represents the SSL certificate name or a service identifier.');
+    this.log('- {Region} is the data center region where your CPI instance is hosted, such as eu1, us1, ap1, etc.');
+    this.log('For example, if your account short name is "l123456", your SSL host is "hci", and your instance is hosted in the "eu1" region,');
+    this.log('your CPI instance URL would be "https://l123456-tmn.hci.eu1.hana.ondemand.com".\n');
+
+    const initialEnvironment = {
+      accountShortName: await input({ message: 'CPI Account Short Name:' }),
+      sslHost: await input({ message: 'CPI SSL Host:' }),
+      region: await select({
+        message: 'CPI Region:',
+        choices: cpiRegions.map(region => ({
+          value: region,
+          name: region,
+        })),
+      })
+    } satisfies z.infer<typeof cpiEnvironment>;
+
+    this.log('');
+
+    ux.action.start('Checking connection...');
+
+    try {
+      await testCredentials(initialEnvironment, secrets);
+    } catch (error) {
+      ux.action.stop('Connection failed! ❌');
+
+      if (!(error instanceof Error)) this.error(new Error('Unknown error: ' + String(error)));
+
+      this.logToStderr('Failed to connect to the SAP CPI instance with the provided credentials:');
+      this.error(error);
+    }
+
+    ux.action.stop('Connection successful! ✅\n');
 
     // Write the secrets to the .env file
     await setSecrets(this, secrets);
@@ -47,6 +94,13 @@ export default class Init extends Command {
       await writeFile('.gitignore', '.env');
     }
 
-    this.log('-- 🔓 Local Environment Secret Setup Complete 🔓 --');
+    // Write the initial environment to the .cpi-configuration-versions.json file
+    await setConfiguration(this, {
+      environments: [initialEnvironment],
+    });
+
+
+
+    this.log('\n-- 🔓 Local Environment Secret Setup Complete 🔓 --\n');
   }
 }

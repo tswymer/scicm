@@ -1,3 +1,4 @@
+import { select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 
 import { integrationContent } from '../../cpi-odata/IntegrationContent/index.js';
@@ -15,11 +16,21 @@ export default class Package extends Command {
         const integrationPackages = await integrationPackagesApi.requestBuilder()
             .getAll()
             .execute({
-                url: secrets.CPI_URL,
+                url: '',
                 username: secrets.CPI_USERNAME,
                 password: secrets.CPI_PASSWORD,
             });
 
-        this.log(integrationPackages.map(pkg => pkg.name).join('\n'));
+        ux.action.stop();
+
+        const selectedPackageId = await select({
+            message: 'Select an intergration package to add:',
+            choices: integrationPackages.map(pkg => ({
+                value: pkg.id,
+                name: `[${pkg.id}]:\t${pkg.name ?? '_Unnamed_Package_'}`,
+            })),
+        });
+
+        this.log(`Selected package: ${selectedPackageId}`);
     }
 }

@@ -1,0 +1,9 @@
+{
+  "environments": [
+    {
+      "accountShortName": "",
+      "sslHost": "",
+      "region": "ae1.hana.ondemand.com"
+    }
+  ]
+}

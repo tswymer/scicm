@@ -35,7 +35,7 @@ const configurationSchema = z.object({
 
 export async function getConfiguration(command: Command) {
     // Read the configuration file
-    const configuration = JSON.parse(await readFile('.cpi-configuration-versions.json', 'utf8'));
+    const configuration = JSON.parse(await readFile('.icm-config.json', 'utf8'));
 
     // Parse the configuration object content
     const parsedConfiguration = configurationSchema.safeParse(configuration);
@@ -43,7 +43,7 @@ export async function getConfiguration(command: Command) {
     // Check if the configuration is valid
     if (!parsedConfiguration.success) {
         command.error(new Error([
-            'Failed to parse configuration from .cpi-configuration-versions.json file:',
+            'Failed to parse configuration from .icm-config.json file:',
             ...parsedConfiguration.error.errors.map(error => JSON.stringify(error, null, 2)),
         ].join('\n')));
     }
@@ -52,9 +52,9 @@ export async function getConfiguration(command: Command) {
 }
 
 export async function setConfiguration(command: Command, configuration: z.infer<typeof configurationSchema>) {
-    // Write the configuration to the .cpi-configuration-versions.json file
-    await writeFile('.cpi-configuration-versions.json', JSON.stringify(configuration, null, 2));
+    // Write the configuration to the .icm-config.json file
+    await writeFile('.icm-config.json', JSON.stringify(configuration, null, 2));
 
     // Log the result
-    command.log('Updated .cpi-configuration-versions.json file ✅');
+    command.log('Updated .icm-config.json file ✅');
 }

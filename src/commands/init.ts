@@ -8,16 +8,17 @@ import { testCredentials } from '../utils/cpi.js';
 import { secretsSchema, setSecrets } from '../utils/secrets.js';
 
 export default class Init extends Command {
-  static description = 'Initialize the the cpi-configuration-versions project.';
+  static description = 'Initialize the the icm project.';
 
   static examples = [];
 
   static flags = {};
 
   public async run() {
-    this.log('Welcome to the setup for a new SAP CPI configuration monitoring setup!\n');
+    this.log('Welcome to the SAP CPI configuration monitoring setup!\n');
 
-    const projectName = await input({ message: 'Project Name:', default: 'cpi-configuration-versions' });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const projectName = await input({ message: 'Project Name:', default: 'my-icm-project' });
 
     // Gather the secrets from the user
     this.log('\n-- 🔓 Local Environment Secret Setup 🔓 --\n');
@@ -94,7 +95,7 @@ export default class Init extends Command {
       await writeFile('.gitignore', '.env');
     }
 
-    // Write the initial environment to the .cpi-configuration-versions.json file
+    // Write the initial environment to the .icm.json file
     await setConfiguration(this, {
       environments: [initialEnvironment],
     });

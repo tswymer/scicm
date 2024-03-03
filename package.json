@@ -1,13 +1,13 @@
 {
-  "name": "cpi-configuration-versions",
+  "name": "icm",
   "version": "0.0.0",
   "description": "oclif example Hello World CLI (ESM)",
   "keywords": [
     "oclif"
   ],
-  "homepage": "https://github.com/Development/cpi-configuration-versions",
-  "bugs": "https://github.com/Development/cpi-configuration-versions/issues",
-  "repository": "Development/cpi-configuration-versions",
+  "homepage": "https://github.com/Development/icm",
+  "bugs": "https://github.com/Development/icm/issues",
+  "repository": "Development/icm",
   "license": "MIT",
   "author": "Tobias Wymer",
   "type": "module",
@@ -15,7 +15,7 @@
   "main": "",
   "types": "dist/index.d.ts",
   "bin": {
-    "cpi-configuration-versions": "./bin/run.js"
+    "icm": "./bin/run.js"
   },
   "files": [
     "/bin",
@@ -33,9 +33,9 @@
     "version": "oclif readme && git add README.md"
   },
   "oclif": {
-    "bin": "cpi-configuration-versions",
+    "bin": "icm",
     "commands": "./dist/commands",
-    "dirname": "cpi-configuration-versions",
+    "dirname": "icm",
     "plugins": [
       "@oclif/plugin-help",
       "@oclif/plugin-plugins"

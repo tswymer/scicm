@@ -1,22 +1,32 @@
 import { z } from "zod";
 
 import { integrationContent } from "../cpi-odata/IntegrationContent/index.js";
-import { cpiEnvironment, getConfiguration } from "./configuration.js";
 import { getSecrets, secretsSchema } from "./secrets.js";
+import { cpiEnvironment, getConfiguration } from "./sicm-configuration.js";
 
-const { integrationPackagesApi } = integrationContent();
+const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
 function buildCPIODataURL({ accountShortName, sslHost, region, }: z.infer<typeof cpiEnvironment>) {
     return `https://${accountShortName}-tmn.${sslHost}.${region}/api/v1`;
 }
 
-const integrationDesigntimeArtifactsSchema = z.array(z.object({
+const integrationDesigntimeArtifactSchema = z.object({
     Id: z.string(),
     Version: z.string(),
     PackageId: z.string().optional(),
     Name: z.string().optional(),
     Description: z.string().optional(),
-}));
+});
+
+export const integrationDesigntimeArtifactConfigurationSchema = z.object({
+    ParameterKey: z.string(),
+    ParameterValue: z.string(),
+    DataType: z.enum([
+        'custom:schedule',
+        'xsd:integer',
+        'xsd:string',
+    ]),
+});
 
 export async function testCredentials(environment: z.infer<typeof cpiEnvironment>, secrets: z.infer<typeof secretsSchema>) {
     await integrationPackagesApi.requestBuilder()
@@ -65,5 +75,24 @@ export async function getIntergrationPackageDesigntimeArtifacts(integrationPacka
         throw new Error('Invalid /IntegrationDesigntimeArtifacts response from CPI');
     }
 
-    return integrationDesigntimeArtifactsSchema.parse(results);
+    return z.array(integrationDesigntimeArtifactSchema).parse(results);
+}
+
+export async function getIntegrationDesigntimeArtifactConfigurations(integrationDesigntimeArtifactId: string, integrationDesigntimeArtifactVersion: string) {
+    const response = await integrationDesigntimeArtifactsApi.requestBuilder()
+        .getByKey(integrationDesigntimeArtifactId, integrationDesigntimeArtifactVersion)
+        .appendPath('/Configurations')
+        .executeRaw(await getExecutionDestination());
+
+    if (response.status !== 200) {
+        throw new Error(`Failed to get integration designtime artifact configurations: ${response.status} - ${response.statusText}`);
+    }
+
+    const results = response?.data?.d?.results;
+
+    if (!results || !Array.isArray(results)) {
+        throw new Error('Invalid /Configurations response from CPI');
+    }
+
+    return z.array(integrationDesigntimeArtifactConfigurationSchema).parse(results);
 }

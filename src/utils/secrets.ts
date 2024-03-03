@@ -59,5 +59,5 @@ export async function setSecrets(command: Command, secrets: z.infer<typeof secre
     // Write the secrets to the .env file
     await appendFile(envFilePath, Object.entries(secrets).map(([key, value]) => `${key}="${value}"`).join('\n'));
 
-    command.log(`Updated ${envFilePath} with secrets ✅`);
+    command.log(`✅ Updated ${envFilePath} with secrets`);
 }

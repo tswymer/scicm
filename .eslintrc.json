@@ -5,6 +5,9 @@
     "unicorn/filename-case": "off",
     "valid-jsdoc": "off",
     "unicorn/consistent-destructuring": "off",
-    "unicorn/no-abusive-eslint-disable": "off"
+    "unicorn/no-abusive-eslint-disable": "off",
+    "unicorn/no-await-expression-member": "off",
+    "unicorn/no-array-for-each": "off",
+    "no-await-in-loop": "off"
   }
 }

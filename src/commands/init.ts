@@ -4,9 +4,9 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { cpiEnvironment, cpiRegions, setConfiguration } from '../utils/configuration.js';
 import { testCredentials } from '../utils/cpi.js';
 import { secretsSchema, setSecrets } from '../utils/secrets.js';
+import { cpiEnvironment, cpiRegions, setConfiguration } from '../utils/sicm-configuration.js';
 
 export default class Init extends Command {
   static description = 'Initialize the the sicm project.';
@@ -71,7 +71,7 @@ export default class Init extends Command {
     ux.action.start('Checking connection...');
     try {
       await testCredentials(initialEnvironment, secrets);
-      ux.action.stop('Connection successful! ✅\n');
+      ux.action.stop('Connection successful! 🌎\n');
     } catch (error) {
       ux.action.stop('Connection failed! ❌');
 
@@ -93,7 +93,7 @@ export default class Init extends Command {
     // Create a .gitignore file to exclude the .env file (secrets)
     const gitIngnoreFilePath = join(projectPath, '.gitignore');
     await writeFile(gitIngnoreFilePath, '.env');
-    this.log(`Updated ${gitIngnoreFilePath} to exclude .env ✅`);
+    this.log(`✅ Updated ${gitIngnoreFilePath} to exclude .env`);
 
     // Write the secrets to the .env file
     await setSecrets(this, secrets, projectName);
@@ -111,6 +111,6 @@ export default class Init extends Command {
       }
     }, null, 2));
 
-    ux.action.stop(`project successfully created! ✅`);
+    ux.action.stop(`Project successfully created! 🎉`);
   }
 }

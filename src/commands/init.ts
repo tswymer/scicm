@@ -1,6 +1,7 @@
 import { input, password, select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
-import { access, appendFile, readFile, writeFile, } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { z } from 'zod';
 
 import { cpiEnvironment, cpiRegions, setConfiguration } from '../utils/configuration.js';
@@ -8,21 +9,29 @@ import { testCredentials } from '../utils/cpi.js';
 import { secretsSchema, setSecrets } from '../utils/secrets.js';
 
 export default class Init extends Command {
-  static description = 'Initialize the the icm project.';
+  static description = 'Initialize the the sicm project.';
 
   static examples = [];
 
   static flags = {};
 
   public async run() {
+    const sicmVersion = JSON.parse(await readFile(join(import.meta.url.replace('file:', ''), '..', '..', 'package.json'), 'utf8')).version;
+    if (!sicmVersion) this.error('Failed to get the current version of sicm.');
+
     this.log('Welcome to the SAP CPI configuration monitoring setup!\n');
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const projectName = await input({ message: 'Project Name:', default: 'my-icm-project' });
+    const projectName = await input({ message: 'Project Name:', default: 'my-sicm-project' });
+
+    // Check if there is already a project (folder) with the same name
+    const projectPath = join(process.cwd(), projectName);
+
+    const projectFolderExists = await access(projectPath).then(() => true).catch(() => false);
+    if (projectFolderExists) {
+      this.error(`A project with the name "${projectName}" already exists in this directory.`);
+    }
 
     // Gather the secrets from the user
-    this.log('\n-- 🔓 Local Environment Secret Setup 🔓 --\n');
-
     this.log('Provide credentials for SAP CPI (OAuth later on, Basic auth for now).');
     const secrets = {
       'CPI_USERNAME': await input({ message: 'CPI OData API Username:' }),
@@ -58,10 +67,11 @@ export default class Init extends Command {
 
     this.log('');
 
+    // Check the connection to the CPI instance
     ux.action.start('Checking connection...');
-
     try {
       await testCredentials(initialEnvironment, secrets);
+      ux.action.stop('Connection successful! ✅\n');
     } catch (error) {
       ux.action.stop('Connection failed! ❌');
 
@@ -71,37 +81,36 @@ export default class Init extends Command {
       this.error(error);
     }
 
-    ux.action.stop('Connection successful! ✅\n');
+    // Create the project folder
+    ux.action.start(`Creating "${projectName}"...`);
+    await mkdir(projectPath);
 
-    // Write the secrets to the .env file
-    await setSecrets(this, secrets);
-
-    try {
-      // Check if the .gitignore file exists
-      await access('.gitignore');
-
-      // If it does, check if the .env file is already in it
-      const gitignore = await readFile('.gitignore', 'utf8');
-      if (gitignore.includes('.env')) {
-        this.log('.env is already part of .gitignore ✅');
-      } else {
-        // If it's not, add it
-        this.log('Adding .env to .gitignore... ✅');
-        await appendFile('.gitignore', '\n.env');
-      }
-    } catch {
-      // If it doesn't, create the .gitignore file with the .env string in it
-      this.log('Creating .gitignore file with .env...');
-      await writeFile('.gitignore', '.env');
-    }
-
-    // Write the initial environment to the .icm.json file
+    // Write the initial environment to the .sicm.json file
     await setConfiguration(this, {
       environments: [initialEnvironment],
-    });
+    }, projectName);
 
+    // Create a .gitignore file to exclude the .env file (secrets)
+    const gitIngnoreFilePath = join(projectPath, '.gitignore');
+    await writeFile(gitIngnoreFilePath, '.env');
+    this.log(`Updated ${gitIngnoreFilePath} to exclude .env ✅`);
 
+    // Write the secrets to the .env file
+    await setSecrets(this, secrets, projectName);
 
-    this.log('\n-- 🔓 Local Environment Secret Setup Complete 🔓 --\n');
+    // Create the package.json file
+    const packageJsonFilePath = join(projectPath, 'package.json');
+    await writeFile(packageJsonFilePath, JSON.stringify({
+      name: projectName,
+      description: 'SAP (Cloud Platform) Integration Configuration Monitoring',
+      scripts: {
+        test: 'echo "Error: no test specified" && exit 1',
+      },
+      dependencies: {
+        'sicm': `^${sicmVersion}`,
+      }
+    }, null, 2));
+
+    ux.action.stop(`project successfully created! ✅`);
   }
 }

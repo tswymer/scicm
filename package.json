@@ -1,21 +1,20 @@
 {
-  "name": "icm",
-  "version": "0.0.0",
-  "description": "oclif example Hello World CLI (ESM)",
+  "name": "sicm",
+  "version": "0.0.1",
+  "description": "SAP (Cloud Platform) Integration Configuration Manager CLI",
   "keywords": [
-    "oclif"
+    "sicm",
+    "sap",
+    "cloud",
+    "platform",
+    "integration",
+    "configration"
   ],
-  "homepage": "https://github.com/Development/icm",
-  "bugs": "https://github.com/Development/icm/issues",
-  "repository": "Development/icm",
-  "license": "MIT",
-  "author": "Tobias Wymer",
   "type": "module",
   "exports": "./lib/index.js",
-  "main": "",
   "types": "dist/index.d.ts",
   "bin": {
-    "icm": "./bin/run.js"
+    "sicm": "./bin/run.js"
   },
   "files": [
     "/bin",
@@ -26,16 +25,16 @@
     "predev": "npm run build && clear",
     "dev": "node ./bin/run.js",
     "build": "shx rm -rf dist && tsc -b",
+    "postbuild": "shx cp package.json dist/package.json",
     "lint": "eslint . --ext .ts",
     "prepack": "npm run build && oclif manifest && oclif readme",
     "postpack": "shx rm -f oclif.manifest.json",
-    "prepare": "npm run build",
-    "version": "oclif readme && git add README.md"
+    "prepare": "npm run build"
   },
   "oclif": {
-    "bin": "icm",
+    "bin": "sicm",
     "commands": "./dist/commands",
-    "dirname": "icm",
+    "dirname": "sicm",
     "plugins": [
       "@oclif/plugin-help",
       "@oclif/plugin-plugins"

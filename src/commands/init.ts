@@ -87,7 +87,7 @@ export default class Init extends Command {
 
     // Write the initial environment to the .sicm.json file
     await setConfiguration(this, {
-      environments: [initialEnvironment],
+      environment: initialEnvironment,
     }, projectName);
 
     // Create a .gitignore file to exclude the .env file (secrets)
@@ -104,7 +104,7 @@ export default class Init extends Command {
       name: projectName,
       description: 'SAP (Cloud Platform) Integration Configuration Monitoring',
       scripts: {
-        test: 'echo "Error: no test specified" && exit 1',
+        "add-package": "node ../bin/run.js add package"
       },
       dependencies: {
         'sicm': `^${sicmVersion}`,

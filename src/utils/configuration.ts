@@ -31,7 +31,7 @@ export const cpiEnvironment = z.object({
 });
 
 const configurationSchema = z.object({
-    environments: z.array(cpiEnvironment),
+    environment: cpiEnvironment,
 });
 
 function getConfigurationFilePath(path: null | string = null) {
@@ -42,7 +42,7 @@ function getConfigurationFilePath(path: null | string = null) {
     return join(filePath, '.sicm-config.json');
 }
 
-export async function getConfiguration(command: Command, path: null | string = null) {
+export async function getConfiguration(path: null | string = null) {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath(path);
 
@@ -54,10 +54,10 @@ export async function getConfiguration(command: Command, path: null | string = n
 
     // Check if the configuration is valid
     if (!parsedConfiguration.success) {
-        command.error(new Error([
+        throw new Error([
             `Failed to parse configuration from ${configurationFilePath}:`,
             ...parsedConfiguration.error.errors.map(error => JSON.stringify(error, null, 2)),
-        ].join('\n')));
+        ].join('\n'));
     }
 
     return parsedConfiguration.data;

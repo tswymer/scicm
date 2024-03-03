@@ -53,6 +53,7 @@
     "@oclif/plugin-plugins": "^4",
     "@sap-cloud-sdk/odata-v2": "^3.12.0",
     "@sap-cloud-sdk/util": "^3.12.0",
+    "dotenv": "^16.4.5",
     "moment": "^2.30.1",
     "zod": "^3.22.4"
   },

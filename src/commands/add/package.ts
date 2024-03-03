@@ -1,26 +1,15 @@
 import { select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 
-import { integrationContent } from '../../cpi-odata/IntegrationContent/index.js';
-import { getSecrets } from '../../utils/secrets.js';
+import { getIntegrationPackages } from '../../utils/cpi.js';
 
 export default class Package extends Command {
     async run(): Promise<void> {
-        const secrets = await getSecrets(this);
 
-        this.log('\n📦 Add a new Intergration Package 📦');
+        this.log('📦 Add a new Intergration Package 📦');
+
         ux.action.start('Loading integration packages from SAP CPI...');
-
-        const { integrationPackagesApi } = integrationContent();
-
-        const integrationPackages = await integrationPackagesApi.requestBuilder()
-            .getAll()
-            .execute({
-                url: '',
-                username: secrets.CPI_USERNAME,
-                password: secrets.CPI_PASSWORD,
-            });
-
+        const integrationPackages = await getIntegrationPackages();
         ux.action.stop();
 
         const selectedPackageId = await select({

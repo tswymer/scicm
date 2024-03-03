@@ -1,4 +1,5 @@
 import { Command } from "@oclif/core";
+import { parse } from 'dotenv';
 import { access, appendFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
@@ -17,7 +18,7 @@ function getEnvFilePath(path: null | string = null) {
     return join(filePath, '.env');
 }
 
-export async function getSecrets(command: Command, path: null | string = null) {
+export async function getSecrets(path: null | string = null) {
     // Create the file path to the .env file
     const envFilePath = getEnvFilePath(path);
 
@@ -25,19 +26,17 @@ export async function getSecrets(command: Command, path: null | string = null) {
     const env = await readFile(envFilePath, 'utf8');
 
     // Parse the .env file into a JSON object
-    const secrets = Object.fromEntries(env.split('\n')
-        .filter(line => line.includes('='))
-        .map(line => line.split('=')));
+    const secrets = parse(env);
 
     // Parse the secrets object
     const parsedSecrets = secretsSchema.safeParse(secrets);
 
     // Check if the secrets are valid
     if (!parsedSecrets.success) {
-        command.error(new Error([
+        throw new Error([
             `Failed to parse secrets from ${envFilePath}:`,
             ...parsedSecrets.error.errors.map(error => JSON.stringify(error, null, 2)),
-        ].join('\n')));
+        ].join('\n'));
     }
 
     return parsedSecrets.data;

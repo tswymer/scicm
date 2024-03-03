@@ -94,6 +94,6 @@ export default class Package extends Command {
             });
         }
 
-        ux.action.stop(`✅ Exported ${exportedConfigurations} configurations`);
+        ux.action.stop(`Exported ${exportedConfigurations} configurations! 🎉\n`);
     }
 }

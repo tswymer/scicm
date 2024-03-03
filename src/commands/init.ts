@@ -1,7 +1,8 @@
 import { Command, ux } from '@oclif/core';
-import fs from 'node:fs/promises';
+import { access, appendFile, readFile, writeFile, } from 'node:fs/promises';
 import { z } from 'zod';
 
+import { integrationContent } from '../cpi-odata/IntegrationContent/index.js';
 import { secretsSchema } from '../schemas/configuration.js';
 
 export default class Init extends Command {
@@ -27,12 +28,12 @@ export default class Init extends Command {
 
     try {
       // Check if the .env file exists
-      await fs.access('.env');
+      await access('.env');
 
       // If it does, append the secrets to it
       try {
         this.log('\nAdding secrets to existing .env file... ✅');
-        await fs.appendFile('.env', '\n\n'.concat(envVariables));
+        await appendFile('.env', '\n\n'.concat(envVariables));
       } catch (error) {
         if (error instanceof Error)
           this.error(error);
@@ -41,33 +42,41 @@ export default class Init extends Command {
     } catch {
       // If it doesn't, create the .env file
       this.log('\nCreating .env file with secrets... ✅');
-      await fs.writeFile('.env', envVariables);
+      await writeFile('.env', envVariables);
     }
 
     try {
       // Check if the .gitignore file exists
-      await fs.access('.gitignore');
+      await access('.gitignore');
 
       // If it does, check if the .env file is already in it
-      const gitignore = await fs.readFile('.gitignore', 'utf8');
+      const gitignore = await readFile('.gitignore', 'utf8');
       if (gitignore.includes('.env')) {
         this.log('.env is already part of .gitignore ✅');
       } else {
         // If it's not, add it
         this.log('Adding .env to .gitignore... ✅');
-        await fs.appendFile('.gitignore', '\n.env');
+        await appendFile('.gitignore', '\n.env');
       }
     } catch {
       // If it doesn't, create the .gitignore file with the .env string in it
       this.log('Creating .gitignore file with .env...');
-      await fs.writeFile('.gitignore', '.env');
+      await writeFile('.gitignore', '.env');
     }
 
     this.log('\n📦 Package Monitoring Setup 📦');
     ux.action.start('Loading integration packages from SAP CPI...');
 
-    // eslint-disable-next-line no-promise-executor-return
-    await new Promise((resolve) => setTimeout(resolve, 20_000));
-  }
+    const { integrationPackagesApi } = integrationContent();
 
+    const integrationPackages = await integrationPackagesApi.requestBuilder()
+      .getAll()
+      .execute({
+        url: secrets.CPI_URL,
+        username: secrets.CPI_USERNAME,
+        password: secrets.CPI_PASSWORD,
+      });
+
+    this.log(integrationPackages.map(pkg => pkg.name).join('\n'));
+  }
 }

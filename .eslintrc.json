@@ -1,6 +1,10 @@
 {
   "extends": ["oclif", "oclif-typescript", "prettier"],
   "rules": {
-    "perfectionist/sort-objects": "off"
+    "perfectionist/sort-objects": "off",
+    "unicorn/filename-case": "off",
+    "valid-jsdoc": "off",
+    "unicorn/consistent-destructuring": "off",
+    "unicorn/no-abusive-eslint-disable": "off"
   }
 }

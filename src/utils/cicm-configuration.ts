@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from 'node:path';
 import { z } from "zod";
 
-export const cpiRegions = [
+export const ciRegions = [
     'ae1.hana.ondemand.com',
     'ap1.hana.ondemand.com',
     'br1.hana.ondemand.com',
@@ -22,12 +22,12 @@ export const cpiRegions = [
     'us4.hana.ondemand.com'
 ] as const;
 
-const cpiRegion = z.enum(cpiRegions);
+const ciRegion = z.enum(ciRegions);
 
-export const cpiEnvironment = z.object({
+export const ciEnvironment = z.object({
     accountShortName: z.string(),
     sslHost: z.string(),
-    region: cpiRegion,
+    region: ciRegion,
 });
 
 export const monitoredIntegrationPackage = z.object({
@@ -36,7 +36,7 @@ export const monitoredIntegrationPackage = z.object({
 });
 
 const configurationSchema = z.object({
-    environments: z.array(cpiEnvironment),
+    environments: z.array(ciEnvironment),
     monitoredIntegrationPackages: z.array(monitoredIntegrationPackage).optional(),
 });
 

@@ -4,8 +4,8 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { cpiEnvironment, cpiRegions, setConfig } from '../utils/cicm-configuration.js';
-import { testCredentials } from '../utils/cpi.js';
+import { testCredentials } from '../utils/ci.js';
+import { ciEnvironment, ciRegions, setConfig } from '../utils/cicm-configuration.js';
 import { secretsSchema, setSecrets } from '../utils/secrets.js';
 
 export default class Init extends Command {
@@ -19,7 +19,7 @@ export default class Init extends Command {
     const cicmVersion = JSON.parse(await readFile(join(import.meta.url.replace('file:', ''), '..', '..', 'package.json'), 'utf8')).version;
     if (!cicmVersion) this.error('Failed to get the current version of cicm.');
 
-    this.log('Welcome to the SAP CPI configuration monitoring setup!\n');
+    this.log('Welcome to the SAP Cloud Integration Configuration Manager (cicm) setup!\n');
 
     const projectName = await input({ message: 'Project Name:', default: 'my-cicm-project' });
 
@@ -32,7 +32,7 @@ export default class Init extends Command {
     }
 
     // Gather the secrets from the user
-    this.log('Provide credentials for SAP CPI (OAuth later on, Basic auth for now).');
+    this.log('\n(OAuth later on, Basic auth for now).');
     const secrets = {
       'CPI_USERNAME': await input({ message: 'CPI OData API Username:' }),
       'CPI_PASSWORD': await password({ message: 'CPI OData API Password:' }),
@@ -58,12 +58,12 @@ export default class Init extends Command {
       sslHost: await input({ message: 'CPI SSL Host:' }),
       region: await select({
         message: 'CPI Region:',
-        choices: cpiRegions.map(region => ({
+        choices: ciRegions.map(region => ({
           value: region,
           name: region,
         })),
       })
-    } satisfies z.infer<typeof cpiEnvironment>;
+    } satisfies z.infer<typeof ciEnvironment>;
 
     this.log('');
 
@@ -102,7 +102,7 @@ export default class Init extends Command {
     const packageJsonFilePath = join(projectPath, 'package.json');
     await writeFile(packageJsonFilePath, JSON.stringify({
       name: projectName,
-      description: 'SAP (Cloud Platform) Integration Configuration Monitoring',
+      description: 'SAP Cloud Integration Configuration Manager',
       type: 'module',
       scripts: {
         "add-package": "node ../bin/run.js add package",
@@ -113,6 +113,6 @@ export default class Init extends Command {
       }
     }, null, 2));
 
-    ux.action.stop(`Project successfully created! 🎉`);
+    ux.action.stop(`🎉 Project successfully created!`);
   }
 }

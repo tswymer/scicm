@@ -3,8 +3,8 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 
-import { cpiEnvironment } from "./cicm-configuration.js";
-import { getIntegrationDesigntimeArtifactConfigurations, integrationDesigntimeArtifactConfigurationSchema } from "./cpi.js";
+import { getIntegrationDesigntimeArtifactConfigurations, integrationDesigntimeArtifactConfigurationSchema } from "./ci.js";
+import { ciEnvironment } from "./cicm-configuration.js";
 
 const artifactConfigurationsSchema = z.object({
     _createdAt: z.string().datetime(),
@@ -30,7 +30,7 @@ export async function createLocalArtifactConfiguration(command: Command, integra
 
     // Create the initial artifact configuration file
     await writeFile(artifactConfigurationFilePath, JSON.stringify(artifactConfiguration, null, 2));
-    command.log(`📝 Exported ${artifactConfiguration.artifactConfigurations.at(0)?.configurations.length ?? 0} configuration(s) for "${artifactConfiguration.artifactId}"`);
+    command.log(`✅ Exported ${artifactConfiguration.artifactConfigurations.at(0)?.configurations.length ?? 0}\tconfiguration(s) for "${artifactConfiguration.artifactId}"`);
 }
 
 export async function getLocalArtifactConfiguration(command: Command, integrationPackageId: string, artifactId: string) {
@@ -47,12 +47,12 @@ interface compareArtifactConfigurationsOptions {
     artifactId: string;
     artifactVersion: string;
     command: Command;
-    environment: z.infer<typeof cpiEnvironment>;
+    environment: z.infer<typeof ciEnvironment>;
     packageId: string;
 }
 
 export async function compareArtifactConfigurations({ command, packageId, artifactId, artifactVersion, environment }: compareArtifactConfigurationsOptions) {
-    // Get the current configuration monitoring for the artifact, both locally and from CPI
+    // Get the current configuration for the artifact, both locally and from CPI
     const localConfigurations = await getLocalArtifactConfiguration(command, packageId, artifactId);
     const remoteConfigurations = await getIntegrationDesigntimeArtifactConfigurations(environment, artifactId, artifactVersion);
 

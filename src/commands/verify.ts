@@ -1,8 +1,8 @@
 import { Args, Command, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
+import { getIntergrationPackageDesigntimeArtifacts } from '../utils/ci.js';
 import { getConfig } from '../utils/cicm-configuration.js';
-import { getIntergrationPackageDesigntimeArtifacts } from '../utils/cpi.js';
 
 export default class VerifyConfiguration extends Command {
     static args = {

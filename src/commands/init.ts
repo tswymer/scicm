@@ -103,6 +103,7 @@ export default class Init extends Command {
     await writeFile(packageJsonFilePath, JSON.stringify({
       name: projectName,
       description: 'SAP (Cloud Platform) Integration Configuration Monitoring',
+      type: 'module',
       scripts: {
         "add-package": "node ../bin/run.js add package",
         "verify-configurations": "node ../bin/run.js verify",

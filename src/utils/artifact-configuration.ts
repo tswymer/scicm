@@ -50,8 +50,8 @@ interface compareArtifactConfigurationsOptions {
 }
 
 export async function compareArtifactConfigurations({ command, packageId, artifactId, artifactVersion }: compareArtifactConfigurationsOptions) {
-    const localConfigurations = await getLocalArtifactConfiguration(command, packageId, artifactId);
     // Get the current configuration monitoring for the artifact, both locally and from CPI
+    const localConfigurations = await getLocalArtifactConfiguration(command, packageId, artifactId);
     const remoteConfigurations = await getIntegrationDesigntimeArtifactConfigurations(artifactId, artifactVersion);
 
     // Check if the remote artifact version is identical to the local artifact configuration version

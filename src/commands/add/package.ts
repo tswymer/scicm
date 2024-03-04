@@ -1,11 +1,11 @@
 import { checkbox, select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 
-import { createArtifactConfigurationMonitoring } from '../../utils/artifact-configuration.js';
+import { createLocalArtifactConfiguration } from '../../utils/artifact-configuration.js';
 import { getIntegrationDesigntimeArtifactConfigurations, getIntegrationPackages, getIntergrationPackageDesigntimeArtifacts } from '../../utils/cpi.js';
-import { getConfiguration, getMonitoredArtifactsByIntegrationPackage, setConfiguration } from '../../utils/sicm-configuration.js';
+import { getSICMConfig, setConfiguration } from '../../utils/sicm-configuration.js';
 
-export default class Package extends Command {
+export default class AddPackage extends Command {
     async run(): Promise<void> {
         this.log('📦 Add a new Intergration Package 📦');
 
@@ -23,8 +23,8 @@ export default class Package extends Command {
         });
 
         // Make sure the package is not already being monitored
-        const configuration = await getConfiguration();
-        if (configuration.monitoredIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === selectedPackageId)) {
+        const config = await getSICMConfig();
+        if (config.monitoredIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === selectedPackageId)) {
             this.error(`The integration package ${selectedPackageId} is already being monitored.`);
         }
 
@@ -56,9 +56,9 @@ export default class Package extends Command {
 
         // Update the configuration
         await setConfiguration(this, {
-            ...configuration,
+            ...config,
             monitoredIntegrationPackages: [
-                ...configuration.monitoredIntegrationPackages ?? [],
+                ...config.monitoredIntegrationPackages ?? [],
                 {
                     packageId: selectedPackageId,
                     ignoredArtifactIds: excludedArtifactIds,
@@ -68,13 +68,13 @@ export default class Package extends Command {
 
         // Export the configurations for the selected artifacts
         ux.action.start(`Exporting integration artifact configurations...`);
-        const monitoredArtifacts = await getMonitoredArtifactsByIntegrationPackage(this, selectedPackageId);
+        const packageArtifacts = await getIntergrationPackageDesigntimeArtifacts(selectedPackageId);
 
         let exportedConfigurations = 0;
 
         for (const selectedArtifact of selectedIntegrationArtifacts) {
             // Get the artifact from the list of monitored artifacts
-            const artifact = monitoredArtifacts.find(artifact => artifact.Id === selectedArtifact);
+            const artifact = packageArtifacts.find(artifact => artifact.Id === selectedArtifact);
             if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${selectedPackageId}".`);
 
             // Get the configurations for the artifact
@@ -83,7 +83,7 @@ export default class Package extends Command {
 
             // Create the artifact configuration monitoring file
             const createdAt = new Date().toISOString();
-            await createArtifactConfigurationMonitoring(this, selectedPackageId, {
+            await createLocalArtifactConfiguration(this, selectedPackageId, {
                 _createdAt: createdAt,
                 artifactId: artifact.Id,
                 artifactConfigurations: [{

@@ -104,7 +104,8 @@ export default class Init extends Command {
       name: projectName,
       description: 'SAP (Cloud Platform) Integration Configuration Monitoring',
       scripts: {
-        "add-package": "node ../bin/run.js add package"
+        "add-package": "node ../bin/run.js add package",
+        "verify-configurations": "node ../bin/run.js verify",
       },
       dependencies: {
         'sicm': `^${sicmVersion}`,

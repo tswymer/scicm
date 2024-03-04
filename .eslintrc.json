@@ -1,13 +1,14 @@
 {
   "extends": ["oclif", "oclif-typescript", "prettier"],
   "rules": {
+    "no-await-in-loop": "off",
     "perfectionist/sort-objects": "off",
-    "unicorn/filename-case": "off",
-    "valid-jsdoc": "off",
     "unicorn/consistent-destructuring": "off",
+    "unicorn/filename-case": "off",
     "unicorn/no-abusive-eslint-disable": "off",
-    "unicorn/no-await-expression-member": "off",
     "unicorn/no-array-for-each": "off",
-    "no-await-in-loop": "off"
+    "unicorn/no-await-expression-member": "off",
+    "unicorn/no-useless-undefined": "off",
+    "valid-jsdoc": "off"
   }
 }

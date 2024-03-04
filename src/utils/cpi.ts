@@ -2,11 +2,15 @@ import { z } from "zod";
 
 import { integrationContent } from "../cpi-odata/IntegrationContent/index.js";
 import { getSecrets, secretsSchema } from "./secrets.js";
-import { cpiEnvironment, getConfiguration } from "./sicm-configuration.js";
+import { cpiEnvironment, getSICMConfig } from "./sicm-configuration.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
-function buildCPIODataURL({ accountShortName, sslHost, region, }: z.infer<typeof cpiEnvironment>) {
+async function buildCPIODataURL(environment: undefined | z.infer<typeof cpiEnvironment> = undefined) {
+    environment ||= (await getSICMConfig()).environment;
+
+    const { accountShortName, region, sslHost } = environment;
+
     return `https://${accountShortName}-tmn.${sslHost}.${region}/api/v1`;
 }
 
@@ -32,22 +36,17 @@ export async function testCredentials(environment: z.infer<typeof cpiEnvironment
     await integrationPackagesApi.requestBuilder()
         .getAll()
         .execute({
-            url: buildCPIODataURL(environment),
+            url: await buildCPIODataURL(environment),
             username: secrets.CPI_USERNAME,
             password: secrets.CPI_PASSWORD,
         });
 }
 
 async function getExecutionDestination() {
-    const configuration = await getConfiguration();
     const secrets = await getSecrets();
 
     return {
-        url: buildCPIODataURL({
-            accountShortName: configuration.environment.accountShortName,
-            region: configuration.environment.region,
-            sslHost: configuration.environment.sslHost,
-        }),
+        url: await buildCPIODataURL(),
         username: secrets.CPI_USERNAME,
         password: secrets.CPI_PASSWORD,
     } as const;

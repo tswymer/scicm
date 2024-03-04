@@ -3,8 +3,6 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from 'node:path';
 import { z } from "zod";
 
-import { getIntergrationPackageDesigntimeArtifacts } from "./cpi.js";
-
 export const cpiRegions = [
     'ae1.hana.ondemand.com',
     'ap1.hana.ondemand.com',
@@ -50,7 +48,7 @@ function getConfigurationFilePath(path: null | string = null) {
     return join(filePath, '.sicm-config.json');
 }
 
-export async function getConfiguration(path: null | string = null) {
+export async function getSICMConfig(path: null | string = null) {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath(path);
 
@@ -84,31 +82,4 @@ export async function setConfiguration(command: Command, configuration: z.infer<
 
     // Log the result
     command.log(`⚙️ Updated ${configurationFilePath}`);
-}
-
-export async function getMonitoredArtifactsByIntegrationPackage(command: Command, integrationPackageId: string) {
-    const configuration = await getConfiguration();
-
-    const monitoredIntegrationArtifact = configuration.monitoredIntegrationPackages?.find(monitoredPackage => monitoredPackage.packageId === integrationPackageId);
-
-    if (!monitoredIntegrationArtifact) {
-        throw new Error(`The integration package ${integrationPackageId} is not monitored.`);
-    }
-
-    const integrationDesigntimeArtifacts = await getIntergrationPackageDesigntimeArtifacts(integrationPackageId);
-
-    // Filter out the ignored artifacts
-    for (const ignoredArtifactId of monitoredIntegrationArtifact.ignoredArtifactIds) {
-        const ignoredArtifactIndex = integrationDesigntimeArtifacts.findIndex(artifact => artifact.Id === ignoredArtifactId);
-
-        if (ignoredArtifactIndex === -1) {
-            command.warn(`Artifact "${ignoredArtifactId}" is in ignoredArtifactIds, but not present in the integration package "${integrationPackageId}".`);
-            continue;
-        }
-
-        // Remove the ignored artifact from the list of designtime artifacts
-        integrationDesigntimeArtifacts.splice(ignoredArtifactIndex, 1);
-    }
-
-    return integrationDesigntimeArtifacts;
 }

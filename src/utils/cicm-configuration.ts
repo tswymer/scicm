@@ -45,10 +45,10 @@ function getConfigurationFilePath(path: null | string = null) {
 
     const filePath = path ? join(cwd, path) : cwd;
 
-    return join(filePath, '.sicm-config.json');
+    return join(filePath, '.cicm-config.json');
 }
 
-export async function getSICMConfig(path: null | string = null) {
+export async function getCICMconfig(path: null | string = null) {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath(path);
 
@@ -77,7 +77,7 @@ export async function setConfiguration(command: Command, configuration: z.infer<
     configuration.monitoredIntegrationPackages?.sort((a, b) => a.packageId.localeCompare(b.packageId));
     configuration.monitoredIntegrationPackages?.forEach(monitoredPackage => monitoredPackage.ignoredArtifactIds.sort());
 
-    // Write the configuration to the .sicm-config.json file
+    // Write the configuration to the .cicm-config.json file
     await writeFile(configurationFilePath, JSON.stringify(configuration, null, 2));
 
     // Log the result

@@ -3,7 +3,7 @@ import { Command, ux } from '@oclif/core';
 
 import { createLocalArtifactConfiguration } from '../../utils/artifact-configuration.js';
 import { getIntegrationDesigntimeArtifactConfigurations, getIntegrationPackages, getIntergrationPackageDesigntimeArtifacts } from '../../utils/cpi.js';
-import { getSICMConfig, setConfiguration } from '../../utils/sicm-configuration.js';
+import { getcicmConfig, setConfiguration } from '../../utils/cicm-configuration.js';
 
 export default class AddPackage extends Command {
     async run(): Promise<void> {
@@ -23,7 +23,7 @@ export default class AddPackage extends Command {
         });
 
         // Make sure the package is not already being monitored
-        const config = await getSICMConfig();
+        const config = await getcicmConfig();
         if (config.monitoredIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === selectedPackageId)) {
             this.error(`The integration package ${selectedPackageId} is already being monitored.`);
         }

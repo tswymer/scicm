@@ -6,22 +6,22 @@ import { z } from 'zod';
 
 import { testCredentials } from '../utils/cpi.js';
 import { secretsSchema, setSecrets } from '../utils/secrets.js';
-import { cpiEnvironment, cpiRegions, setConfiguration } from '../utils/sicm-configuration.js';
+import { cpiEnvironment, cpiRegions, setConfiguration } from '../utils/cicm-configuration.js';
 
 export default class Init extends Command {
-  static description = 'Initialize the the sicm project.';
+  static description = 'Initialize the the cicm project.';
 
   static examples = [];
 
   static flags = {};
 
   public async run() {
-    const sicmVersion = JSON.parse(await readFile(join(import.meta.url.replace('file:', ''), '..', '..', 'package.json'), 'utf8')).version;
-    if (!sicmVersion) this.error('Failed to get the current version of sicm.');
+    const cicmVersion = JSON.parse(await readFile(join(import.meta.url.replace('file:', ''), '..', '..', 'package.json'), 'utf8')).version;
+    if (!cicmVersion) this.error('Failed to get the current version of cicm.');
 
     this.log('Welcome to the SAP CPI configuration monitoring setup!\n');
 
-    const projectName = await input({ message: 'Project Name:', default: 'my-sicm-project' });
+    const projectName = await input({ message: 'Project Name:', default: 'my-cicm-project' });
 
     // Check if there is already a project (folder) with the same name
     const projectPath = join(process.cwd(), projectName);
@@ -85,7 +85,7 @@ export default class Init extends Command {
     ux.action.start(`Creating "${projectName}"...`);
     await mkdir(projectPath);
 
-    // Write the initial environment to the .sicm.json file
+    // Write the initial environment to the .cicm.json file
     await setConfiguration(this, {
       environment: initialEnvironment,
     }, projectName);
@@ -109,7 +109,7 @@ export default class Init extends Command {
         "verify-configurations": "node ../bin/run.js verify",
       },
       dependencies: {
-        'sicm': `^${sicmVersion}`,
+        'cicm': `^${cicmVersion}`,
       }
     }, null, 2));
 

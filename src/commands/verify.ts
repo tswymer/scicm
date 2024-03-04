@@ -6,39 +6,46 @@ import { getConfig } from '../utils/cicm-configuration.js';
 
 export default class VerifyConfiguration extends Command {
     static args = {
-        environmentAccountShortName: Args.string(),
+        environmentAccountShortName: Args.string({ required: true }),
     }
 
     async run(): Promise<void> {
-        this.log('🧐 Verifying Integration Configurations 🧐');
-
         const { args: { environmentAccountShortName } } = await this.parse(VerifyConfiguration);
 
         const config = await getConfig();
 
         const environment = config.environments.find(environment => environment.accountShortName === environmentAccountShortName);
 
-        if (!environment) this.error(`Environment with account short name "${environmentAccountShortName}" not found.`);
+        if (!environment) this.error(`Environment with accountShortName "${environmentAccountShortName}" not found.`);
+
+        this.log('Verifying Cloud Integration Configurations...');
 
         for (const monitoredPackage of config.monitoredIntegrationPackages ?? []) {
-            ux.action.start(`Verifying configurations for integration package ${monitoredPackage.packageId}...`);
+            this.log('');
+
+            ux.action.start(`Verifying configurations for package "${monitoredPackage.packageId}"...`);
 
             const packageArtifacts = await getIntergrationPackageDesigntimeArtifacts(environment, monitoredPackage.packageId);
 
+            let comparisonCounter = 0;
             for (const packageArtifact of packageArtifacts) {
                 // Check if the artifact is ignored in the configuration
                 if (monitoredPackage.ignoredArtifactIds.includes(packageArtifact.Id)) continue;
 
-                await compareArtifactConfigurations({
+                const comparedConfigurations = await compareArtifactConfigurations({
                     artifactId: packageArtifact.Id,
                     artifactVersion: packageArtifact.Version,
                     command: this,
                     environment,
                     packageId: monitoredPackage.packageId,
                 });
+
+                comparisonCounter += comparedConfigurations;
             }
 
-            ux.action.stop(`complete! 🎉`);
+            ux.action.stop(`verified ${comparisonCounter} configurations!`);
         }
+
+        this.log('\n🎉 Successfully verified all configurations!');
     }
 }

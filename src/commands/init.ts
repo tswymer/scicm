@@ -106,7 +106,7 @@ export default class Init extends Command {
       type: 'module',
       scripts: {
         "add-package": "node ../bin/run.js add package",
-        "verify-configurations": "node ../bin/run.js verify",
+        "verify": "node ../bin/run.js verify",
       },
       dependencies: {
         'cicm': `^${cicmVersion}`,

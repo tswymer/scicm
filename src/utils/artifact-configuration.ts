@@ -71,26 +71,36 @@ export async function compareArtifactConfigurations({ command, packageId, artifa
     command.log(`Verifying ${remoteConfigurations.length}\tconfiguration(s) for artifact "${artifactId}"...`);
 
     // For every local configuration, compare it the remote configuration
+    let comparisonCount = 0;
     for (const localConfiguration of newestLocalArtifactConfigurations?.configurations ?? []) {
         const remoteConfigurationIndex = remoteConfigurations.findIndex(remoteConfiguration => remoteConfiguration.ParameterKey === localConfiguration.ParameterKey);
         if (remoteConfigurationIndex === -1) {
-            command.warn(`Configuration key "${localConfiguration.ParameterKey}" is not present in the remote configurations.`);
+            command.warn([
+                `⚠️ Local configuration key "${localConfiguration.ParameterKey}" from artifact "${artifactId}" (v.${artifactVersion}) is not present in the remote configurations.`,
+            ].join('\n'));
             continue;
         }
 
         const remoteConfigurationValue = remoteConfigurations.at(remoteConfigurationIndex)?.ParameterValue;
         if (remoteConfigurationValue !== localConfiguration.ParameterValue) {
             throw new Error([
-                `🚨 Local configuration key "${localConfiguration.ParameterKey}" for artifact "${artifactId}" (v.${artifactVersion}) has a different value than the remote configuration value:`,
+                `🚨 Local configuration key "${localConfiguration.ParameterKey}" from artifact "${artifactId}" (v.${artifactVersion}) has a different value than the remote configuration value:`,
                 `Local Value:\t${localConfiguration.ParameterValue}`,
                 `Remote Value:\t${remoteConfigurationValue}`,
             ].join('\n'));
         }
 
         remoteConfigurations.splice(remoteConfigurationIndex, 1);
+        comparisonCount++;
     }
 
     remoteConfigurations.forEach(remainingRemoteConfiguration => {
-        command.error(`🚨 Integration artifact configuration key ${remainingRemoteConfiguration.ParameterKey} not present in the local configuration!`);
+        throw new Error([
+            `🚨 Remote configuration key "${remainingRemoteConfiguration.ParameterKey}" from artifact "${artifactId}" (v.${artifactVersion}) not present in the local configuration!`,
+            `Local Value:\t<not_defined>`,
+            `Remote Value:\t${remainingRemoteConfiguration.ParameterValue}`,
+        ].join('\n'));
     });
+
+    return comparisonCount;
 }

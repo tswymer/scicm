@@ -6,7 +6,7 @@ import { getSecrets, secretsSchema } from "./secrets.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
-export async function buildCPIODataURL({ accountShortName, region, sslHost }: z.infer<typeof cpiEnvironment>) {
+export function buildCPIODataURL({ accountShortName, region, sslHost }: z.infer<typeof cpiEnvironment>) {
     return `https://${accountShortName}-tmn.${sslHost}.${region}/api/v1`;
 }
 
@@ -32,7 +32,7 @@ export async function testCredentials(environment: z.infer<typeof cpiEnvironment
     await integrationPackagesApi.requestBuilder()
         .getAll()
         .execute({
-            url: await buildCPIODataURL(environment),
+            url: buildCPIODataURL(environment),
             username: secrets.CPI_USERNAME,
             password: secrets.CPI_PASSWORD,
         });
@@ -42,7 +42,7 @@ async function getExecutionDestination(environment: z.infer<typeof cpiEnvironmen
     const secrets = await getSecrets();
 
     return {
-        url: await buildCPIODataURL(environment),
+        url: buildCPIODataURL(environment),
         username: secrets.CPI_USERNAME,
         password: secrets.CPI_PASSWORD,
     } as const;

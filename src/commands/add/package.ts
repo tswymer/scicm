@@ -2,8 +2,8 @@ import { checkbox, select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 
 import { createLocalArtifactConfiguration } from '../../utils/artifact-configuration.js';
+import { getConfig, setConfig } from '../../utils/cicm-configuration.js';
 import { getIntegrationDesigntimeArtifactConfigurations, getIntegrationPackages, getIntergrationPackageDesigntimeArtifacts } from '../../utils/cpi.js';
-import { getcicmConfig, setConfiguration } from '../../utils/cicm-configuration.js';
 
 export default class AddPackage extends Command {
     async run(): Promise<void> {
@@ -23,7 +23,7 @@ export default class AddPackage extends Command {
         });
 
         // Make sure the package is not already being monitored
-        const config = await getcicmConfig();
+        const config = await getConfig();
         if (config.monitoredIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === selectedPackageId)) {
             this.error(`The integration package ${selectedPackageId} is already being monitored.`);
         }
@@ -55,7 +55,7 @@ export default class AddPackage extends Command {
             .map(artifact => artifact.Id);
 
         // Update the configuration
-        await setConfiguration(this, {
+        await setConfig(this, {
             ...config,
             monitoredIntegrationPackages: [
                 ...config.monitoredIntegrationPackages ?? [],

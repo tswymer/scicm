@@ -4,9 +4,9 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
+import { cpiEnvironment, cpiRegions, setConfig } from '../utils/cicm-configuration.js';
 import { testCredentials } from '../utils/cpi.js';
 import { secretsSchema, setSecrets } from '../utils/secrets.js';
-import { cpiEnvironment, cpiRegions, setConfiguration } from '../utils/cicm-configuration.js';
 
 export default class Init extends Command {
   static description = 'Initialize the the cicm project.';
@@ -86,7 +86,7 @@ export default class Init extends Command {
     await mkdir(projectPath);
 
     // Write the initial environment to the .cicm.json file
-    await setConfiguration(this, {
+    await setConfig(this, {
       environment: initialEnvironment,
     }, projectName);
 

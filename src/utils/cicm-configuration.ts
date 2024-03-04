@@ -48,7 +48,7 @@ function getConfigurationFilePath(path: null | string = null) {
     return join(filePath, '.cicm-config.json');
 }
 
-export async function getCICMconfig(path: null | string = null) {
+export async function getConfig(path: null | string = null) {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath(path);
 
@@ -69,7 +69,7 @@ export async function getCICMconfig(path: null | string = null) {
     return parsedConfiguration.data;
 }
 
-export async function setConfiguration(command: Command, configuration: z.infer<typeof configurationSchema>, path: null | string = null) {
+export async function setConfig(command: Command, configuration: z.infer<typeof configurationSchema>, path: null | string = null) {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath(path);
 

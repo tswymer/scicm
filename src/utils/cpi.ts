@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 import { integrationContent } from "../cpi-odata/IntegrationContent/index.js";
+import { cpiEnvironment, getConfig } from "./cicm-configuration.js";
 import { getSecrets, secretsSchema } from "./secrets.js";
-import { cpiEnvironment, getcicmConfig } from "./cicm-configuration.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
 async function buildCPIODataURL(environment: undefined | z.infer<typeof cpiEnvironment> = undefined) {
-    environment ||= (await getcicmConfig()).environment;
+    environment ||= (await getConfig()).environment;
 
     const { accountShortName, region, sslHost } = environment;
 

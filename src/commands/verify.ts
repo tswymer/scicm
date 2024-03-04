@@ -1,14 +1,14 @@
 import { Command, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
+import { getConfig } from '../utils/cicm-configuration.js';
 import { getIntergrationPackageDesigntimeArtifacts } from '../utils/cpi.js';
-import { getcicmConfig } from '../utils/cicm-configuration.js';
 
 export default class VerifyConfiguration extends Command {
     async run(): Promise<void> {
         this.log('🧐 Verifying Integration Configurations 🧐');
 
-        const config = await getcicmConfig();
+        const config = await getConfig();
 
         for (const monitoredPackage of config.monitoredIntegrationPackages ?? []) {
             ux.action.start(`Verifying configurations for integration package ${monitoredPackage.packageId}...`);

@@ -3,15 +3,34 @@ import { Command, ux } from '@oclif/core';
 
 import { createLocalArtifactConfiguration } from '../../utils/artifact-configuration.js';
 import { getConfig, setConfig } from '../../utils/cicm-configuration.js';
-import { getIntegrationDesigntimeArtifactConfigurations, getIntegrationPackages, getIntergrationPackageDesigntimeArtifacts } from '../../utils/cpi.js';
+import { buildCPIODataURL, getIntegrationDesigntimeArtifactConfigurations, getIntegrationPackages, getIntergrationPackageDesigntimeArtifacts } from '../../utils/cpi.js';
 
 export default class AddPackage extends Command {
     async run(): Promise<void> {
         this.log('📦 Add a new Intergration Package 📦');
 
+        const config = await getConfig();
+
+        // Select the environment to add the integration package from
+        const selectedEnvironment = await select({
+            message: 'Select the environment to add the integration package to:',
+            choices: config.environments.map(environment => ({
+                value: environment.accountShortName,
+                name: `${buildCPIODataURL({
+                    accountShortName: environment.accountShortName,
+                    region: environment.region,
+                    sslHost: environment.sslHost,
+                })})`,
+            })),
+        });
+
+        const environment = config.environments.find(environment => environment.accountShortName === selectedEnvironment);
+
+        if (!environment) this.error(`Environment with account short name "${selectedEnvironment}" not found.`);
+
         // Get the integration package to add from the user
         ux.action.start('Loading integration packages from SAP CPI...');
-        const integrationPackages = await getIntegrationPackages();
+        const integrationPackages = await getIntegrationPackages(environment);
         ux.action.stop();
 
         const selectedPackageId = await select({
@@ -23,14 +42,13 @@ export default class AddPackage extends Command {
         });
 
         // Make sure the package is not already being monitored
-        const config = await getConfig();
         if (config.monitoredIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === selectedPackageId)) {
             this.error(`The integration package ${selectedPackageId} is already being monitored.`);
         }
 
         // Get the integration package designtime artifacts to monitor
         ux.action.start(`Loading integration artifacts from SAP CPI packeg ${selectedPackageId}...`);
-        const integrationDesigntimeArtifacts = await getIntergrationPackageDesigntimeArtifacts(selectedPackageId);
+        const integrationDesigntimeArtifacts = await getIntergrationPackageDesigntimeArtifacts(environment, selectedPackageId);
         ux.action.stop();
         const selectedIntegrationArtifacts = await checkbox({
             message: 'Select the integration artifacts to start monitoring configurations for:',
@@ -68,7 +86,7 @@ export default class AddPackage extends Command {
 
         // Export the configurations for the selected artifacts
         ux.action.start(`Exporting integration artifact configurations...`);
-        const packageArtifacts = await getIntergrationPackageDesigntimeArtifacts(selectedPackageId);
+        const packageArtifacts = await getIntergrationPackageDesigntimeArtifacts(environment, selectedPackageId);
 
         let exportedConfigurations = 0;
 
@@ -78,7 +96,7 @@ export default class AddPackage extends Command {
             if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${selectedPackageId}".`);
 
             // Get the configurations for the artifact
-            const artifactConfigurations = await getIntegrationDesigntimeArtifactConfigurations(artifact.Id, artifact.Version);
+            const artifactConfigurations = await getIntegrationDesigntimeArtifactConfigurations(environment, artifact.Id, artifact.Version);
             exportedConfigurations += artifactConfigurations.length;
 
             // Create the artifact configuration monitoring file

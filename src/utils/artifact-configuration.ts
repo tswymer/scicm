@@ -3,6 +3,7 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 
+import { cpiEnvironment } from "./cicm-configuration.js";
 import { getIntegrationDesigntimeArtifactConfigurations, integrationDesigntimeArtifactConfigurationSchema } from "./cpi.js";
 
 const artifactConfigurationsSchema = z.object({
@@ -46,13 +47,14 @@ interface compareArtifactConfigurationsOptions {
     artifactId: string;
     artifactVersion: string;
     command: Command;
+    environment: z.infer<typeof cpiEnvironment>;
     packageId: string;
 }
 
-export async function compareArtifactConfigurations({ command, packageId, artifactId, artifactVersion }: compareArtifactConfigurationsOptions) {
+export async function compareArtifactConfigurations({ command, packageId, artifactId, artifactVersion, environment }: compareArtifactConfigurationsOptions) {
     // Get the current configuration monitoring for the artifact, both locally and from CPI
     const localConfigurations = await getLocalArtifactConfiguration(command, packageId, artifactId);
-    const remoteConfigurations = await getIntegrationDesigntimeArtifactConfigurations(artifactId, artifactVersion);
+    const remoteConfigurations = await getIntegrationDesigntimeArtifactConfigurations(environment, artifactId, artifactVersion);
 
     // Check if the remote artifact version is identical to the local artifact configuration version
     const hasIdenticalVersionConfiguration = localConfigurations.artifactConfigurations.find(localArtifactConfiguration => localArtifactConfiguration.artifactVersion === artifactVersion);

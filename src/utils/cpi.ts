@@ -1,16 +1,12 @@
 import { z } from "zod";
 
 import { integrationContent } from "../cpi-odata/IntegrationContent/index.js";
-import { cpiEnvironment, getConfig } from "./cicm-configuration.js";
+import { cpiEnvironment } from "./cicm-configuration.js";
 import { getSecrets, secretsSchema } from "./secrets.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
-async function buildCPIODataURL(environment: undefined | z.infer<typeof cpiEnvironment> = undefined) {
-    environment ||= (await getConfig()).environment;
-
-    const { accountShortName, region, sslHost } = environment;
-
+export async function buildCPIODataURL({ accountShortName, region, sslHost }: z.infer<typeof cpiEnvironment>) {
     return `https://${accountShortName}-tmn.${sslHost}.${region}/api/v1`;
 }
 
@@ -42,27 +38,27 @@ export async function testCredentials(environment: z.infer<typeof cpiEnvironment
         });
 }
 
-async function getExecutionDestination() {
+async function getExecutionDestination(environment: z.infer<typeof cpiEnvironment>) {
     const secrets = await getSecrets();
 
     return {
-        url: await buildCPIODataURL(),
+        url: await buildCPIODataURL(environment),
         username: secrets.CPI_USERNAME,
         password: secrets.CPI_PASSWORD,
     } as const;
 }
 
-export async function getIntegrationPackages() {
+export async function getIntegrationPackages(environment: z.infer<typeof cpiEnvironment>) {
     return integrationPackagesApi.requestBuilder()
         .getAll()
-        .execute(await getExecutionDestination());
+        .execute(await getExecutionDestination(environment));
 }
 
-export async function getIntergrationPackageDesigntimeArtifacts(integrationPackageId: string) {
+export async function getIntergrationPackageDesigntimeArtifacts(environment: z.infer<typeof cpiEnvironment>, integrationPackageId: string) {
     const response = await integrationPackagesApi.requestBuilder()
         .getByKey(integrationPackageId)
         .appendPath('/IntegrationDesigntimeArtifacts')
-        .executeRaw(await getExecutionDestination());
+        .executeRaw(await getExecutionDestination(environment));
 
     if (response.status !== 200) {
         throw new Error(`Failed to get integration package designtime artifacts: ${response.status} - ${response.statusText}`);
@@ -77,11 +73,11 @@ export async function getIntergrationPackageDesigntimeArtifacts(integrationPacka
     return z.array(integrationDesigntimeArtifactSchema).parse(results);
 }
 
-export async function getIntegrationDesigntimeArtifactConfigurations(integrationDesigntimeArtifactId: string, integrationDesigntimeArtifactVersion: string) {
+export async function getIntegrationDesigntimeArtifactConfigurations(environment: z.infer<typeof cpiEnvironment>, integrationDesigntimeArtifactId: string, integrationDesigntimeArtifactVersion: string) {
     const response = await integrationDesigntimeArtifactsApi.requestBuilder()
         .getByKey(integrationDesigntimeArtifactId, integrationDesigntimeArtifactVersion)
         .appendPath('/Configurations')
-        .executeRaw(await getExecutionDestination());
+        .executeRaw(await getExecutionDestination(environment));
 
     if (response.status !== 200) {
         throw new Error(`Failed to get integration designtime artifact configurations: ${response.status} - ${response.statusText}`);

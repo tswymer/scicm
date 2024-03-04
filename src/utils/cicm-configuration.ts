@@ -36,7 +36,7 @@ export const monitoredIntegrationPackage = z.object({
 });
 
 const configurationSchema = z.object({
-    environment: cpiEnvironment,
+    environments: z.array(cpiEnvironment),
     monitoredIntegrationPackages: z.array(monitoredIntegrationPackage).optional(),
 });
 

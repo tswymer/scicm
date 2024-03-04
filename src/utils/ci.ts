@@ -73,21 +73,43 @@ export async function getIntergrationPackageDesigntimeArtifacts(environment: z.i
     return z.array(integrationDesigntimeArtifactSchema).parse(results);
 }
 
-export async function getIntegrationDesigntimeArtifactConfigurations(environment: z.infer<typeof ciEnvironment>, integrationDesigntimeArtifactId: string, integrationDesigntimeArtifactVersion: string) {
+interface GetIntegrationDesigntimeArtifactConfigurationsOptions {
+    artifactId: string;
+    artifactVersion: string;
+    environment: z.infer<typeof ciEnvironment>;
+    packageSecrets?: Record<string, string>;
+}
+
+export async function getIntegrationDesigntimeArtifactConfigurations({ environment, artifactId, artifactVersion, packageSecrets }: GetIntegrationDesigntimeArtifactConfigurationsOptions) {
+    // Execute the request to get the integration designtime artifact configurations
     const response = await integrationDesigntimeArtifactsApi.requestBuilder()
-        .getByKey(integrationDesigntimeArtifactId, integrationDesigntimeArtifactVersion)
+        .getByKey(artifactId, artifactVersion)
         .appendPath('/Configurations')
         .executeRaw(await getExecutionDestination(environment));
 
-    if (response.status !== 200) {
-        throw new Error(`Failed to get integration designtime artifact configurations: ${response.status} - ${response.statusText}`);
+    // Because this is a sub-path, we have to parse the response ourselves
+    if (response.status !== 200) throw new Error(`Failed to get integration designtime artifact configurations: ${response.status} - ${response.statusText}`);
+    const results = z.array(integrationDesigntimeArtifactConfigurationSchema).parse(response?.data?.d?.results);
+    if (!results || !Array.isArray(results)) throw new Error('Invalid /Configurations response from CPI');
+
+    // Remove the package secrets from the configurations
+    if (packageSecrets) {
+        for (const [secretName, secretValue] of Object.entries(packageSecrets)) {
+            for (const configuration of results) {
+                // Make sure the configuration names never contain any secrets
+                if (configuration.ParameterKey.includes(secretName)) {
+                    throw new Error([
+                        `Secret "${secretName}" found in configuration key "${configuration.ParameterKey}" for artifact "${artifactId}" (v.${artifactVersion})`
+                    ].join('\n'));
+                }
+
+                // Remove the secret from the configuration value
+                if (configuration.ParameterValue.includes(secretValue)) {
+                    configuration.ParameterValue = configuration.ParameterValue.replaceAll(secretValue, `{{${secretName}}}`);
+                }
+            }
+        }
     }
 
-    const results = response?.data?.d?.results;
-
-    if (!results || !Array.isArray(results)) {
-        throw new Error('Invalid /Configurations response from CPI');
-    }
-
-    return z.array(integrationDesigntimeArtifactConfigurationSchema).parse(results);
+    return results;
 }

@@ -88,8 +88,9 @@ export default class AddPackage extends Command {
                 ...config.monitoredIntegrationPackages ?? [],
                 {
                     packageId: selectedPackageId,
+                    packageSecrets: {},
                     ignoredArtifactIds: excludedArtifactIds,
-                }
+                },
             ]
         });
 
@@ -107,7 +108,11 @@ export default class AddPackage extends Command {
             if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${selectedPackageId}".`);
 
             // Get the configurations for the artifact
-            const artifactConfigurations = await getIntegrationDesigntimeArtifactConfigurations(environment, artifact.Id, artifact.Version);
+            const artifactConfigurations = await getIntegrationDesigntimeArtifactConfigurations({
+                artifactId: artifact.Id,
+                artifactVersion: artifact.Version,
+                environment,
+            });
             exportedConfigurations += artifactConfigurations.length;
 
             // Create the artifact configuration management file

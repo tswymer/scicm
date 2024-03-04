@@ -9,11 +9,7 @@ import { ciEnvironment, ciRegions, setConfig } from '../utils/cicm-configuration
 import { secretsSchema, setSecrets } from '../utils/secrets.js';
 
 export default class Init extends Command {
-  static description = 'Initialize the the cicm project.';
-
-  static examples = [];
-
-  static flags = {};
+  static description = 'Initialize a new Cloud Integration Configuration Manager project.';
 
   public async run() {
     const cicmVersion = JSON.parse(await readFile(join(import.meta.url.replace('file:', ''), '..', '..', 'package.json'), 'utf8')).version;

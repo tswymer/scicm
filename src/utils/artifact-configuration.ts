@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { z } from "zod";
 
 import { getIntegrationDesigntimeArtifactConfigurations, integrationDesigntimeArtifactConfigurationSchema } from "./ci.js";
-import { ciEnvironment } from "./cicm-configuration.js";
+import { ciEnvironment, getConfig } from "./cicm-configuration.js";
 
 const artifactConfigurationsSchema = z.object({
     _createdAt: z.string().datetime(),
@@ -52,9 +52,13 @@ interface compareArtifactConfigurationsOptions {
 }
 
 export async function compareArtifactConfigurations({ command, packageId, artifactId, artifactVersion, environment }: compareArtifactConfigurationsOptions) {
+    // Load the packageSecrets from the configuration file
+    const config = await getConfig();
+    const packageSecrets = config.monitoredIntegrationPackages?.find(monitoredPackage => monitoredPackage.packageId === packageId)?.packageSecrets;
+
     // Get the current configuration for the artifact, both locally and from CPI
     const localConfigurations = await getLocalArtifactConfiguration(command, packageId, artifactId);
-    const remoteConfigurations = await getIntegrationDesigntimeArtifactConfigurations(environment, artifactId, artifactVersion);
+    const remoteConfigurations = await getIntegrationDesigntimeArtifactConfigurations({ environment, artifactId, artifactVersion, packageSecrets });
 
     // Check if the remote artifact version is identical to the local artifact configuration version
     const hasIdenticalVersionConfiguration = localConfigurations.artifactConfigurations.find(localArtifactConfiguration => localArtifactConfiguration.artifactVersion === artifactVersion);
@@ -76,7 +80,7 @@ export async function compareArtifactConfigurations({ command, packageId, artifa
         const remoteConfigurationIndex = remoteConfigurations.findIndex(remoteConfiguration => remoteConfiguration.ParameterKey === localConfiguration.ParameterKey);
         if (remoteConfigurationIndex === -1) {
             command.warn([
-                `⚠️ Local configuration key "${localConfiguration.ParameterKey}" from artifact "${artifactId}" (v.${artifactVersion}) is not present in the remote configurations.`,
+                `Local configuration key "${localConfiguration.ParameterKey}" from artifact "${artifactId}" (v.${artifactVersion}) is not present in the remote configuration.`,
             ].join('\n'));
             continue;
         }

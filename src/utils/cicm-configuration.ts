@@ -33,6 +33,7 @@ export const ciEnvironment = z.object({
 export const monitoredIntegrationPackage = z.object({
     packageId: z.string(),
     ignoredArtifactIds: z.array(z.string()),
+    packageSecrets: z.record(z.string(), z.string()),
 });
 
 const configurationSchema = z.object({

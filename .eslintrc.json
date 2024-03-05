@@ -9,6 +9,7 @@
     "unicorn/no-array-for-each": "off",
     "unicorn/no-await-expression-member": "off",
     "unicorn/no-useless-undefined": "off",
-    "valid-jsdoc": "off"
+    "valid-jsdoc": "off",
+    "padding-line-between-statements": "off"
   }
 }

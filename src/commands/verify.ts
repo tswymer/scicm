@@ -2,7 +2,7 @@ import { Args, Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getNewestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
-import { getConfig } from '../utils/cicm-configuration.js';
+import { getConfig, getEnvironment } from '../utils/cicm-configuration.js';
 import { getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
 import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
 
@@ -19,10 +19,7 @@ export default class VerifyConfiguration extends Command {
         const { args: { environmentAccountShortName }, flags: { safeUpdate } } = await this.parse(VerifyConfiguration);
 
         const config = await getConfig();
-
-        const environment = config.environments.find(environment => environment.accountShortName === environmentAccountShortName);
-
-        if (!environment) this.error(`Environment with accountShortName "${environmentAccountShortName}" not found.`);
+        const environment = getEnvironment(config, environmentAccountShortName);
 
         this.log('Verifying Cloud Integration Configurations...');
 

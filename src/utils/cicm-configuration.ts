@@ -80,3 +80,10 @@ export async function setConfig(configuration: z.infer<typeof configurationSchem
     // Write the configuration to the cicm-config.json file
     await writeFile(configurationFilePath, JSON.stringify(configuration, null, 2));
 }
+
+export function getEnvironment(config: z.infer<typeof configurationSchema>, environmentAccountShortName: string) {
+    const environment = config.environments.find(environment => environment.accountShortName === environmentAccountShortName);
+    if (!environment) throw new Error(`Environment with accountShortName "${environmentAccountShortName}" not found.`);
+
+    return environment;
+}

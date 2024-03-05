@@ -7,9 +7,9 @@ type ArtifactConfigurations = {
 };
 
 type CompareArtifactConfigurationResponse =
-    | { comparisonCount: number, type: 'OK', unusedLocalConfigurationKeys: string[] }
-    | { configurationKey: string, localValue: string, remoteValue: string, type: "LOCAL_CONFIGURATION_MISMATCH" | "LOCAL_CONFIGURATION_MISSING" }
-    | { type: "NO_LOCAL_ARTIFACT_VERSION" };
+    | { comparisonCount: number, result: 'OK', unusedLocalConfigurationKeys: string[] }
+    | { configurationKey: string, localValue: string, remoteValue: string, result: "LOCAL_CONFIGURATION_MISMATCH" | "LOCAL_CONFIGURATION_MISSING" }
+    | { result: "NO_LOCAL_ARTIFACT_VERSION" };
 
 export function compareArtifactConfigurations({ localConfigurations, remoteConfigurations: remoteConfigurationsWithVersion }: ArtifactConfigurations): CompareArtifactConfigurationResponse {
     // Get the configurations from the remote artifact
@@ -28,7 +28,7 @@ export function compareArtifactConfigurations({ localConfigurations, remoteConfi
         const remoteConfigurationValue = remoteConfigurations.at(remoteConfigurationIndex)?.ParameterValue;
         if (remoteConfigurationValue !== localConfiguration.ParameterValue) {
             return {
-                type: 'LOCAL_CONFIGURATION_MISMATCH',
+                result: 'LOCAL_CONFIGURATION_MISMATCH',
                 configurationKey: localConfiguration.ParameterKey,
                 localValue: localConfiguration.ParameterValue,
                 remoteValue: remoteConfigurationValue ?? '<not_defined>',
@@ -44,19 +44,12 @@ export function compareArtifactConfigurations({ localConfigurations, remoteConfi
     // eslint-disable-next-line no-unreachable-loop -- It's fine here, we don't want this loop to run unless there are remaining remote configuration
     for (const remainingRemoteConfiguration of remoteConfigurations) {
         return {
-            type: 'LOCAL_CONFIGURATION_MISSING',
+            result: 'LOCAL_CONFIGURATION_MISSING',
             configurationKey: remainingRemoteConfiguration.ParameterKey,
             localValue: '<not_defined>',
             remoteValue: remainingRemoteConfiguration.ParameterValue,
         }
     }
 
-    return { type: 'OK', comparisonCount, unusedLocalConfigurationKeys };
+    return { result: 'OK', comparisonCount, unusedLocalConfigurationKeys };
 }
-
-// type SafeConfigurationVersionUpdateResponse =
-//     | { type: 'OK' };
-
-// export function safeConfigurationVersionUpdate({ localConfigurations, remoteConfigurations }: ArtifactConfigurations): SafeConfigurationVersionUpdateResponse {
-//     return { type: 'OK' };
-// }

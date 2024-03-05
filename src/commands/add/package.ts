@@ -88,7 +88,6 @@ export default class AddPackage extends Command {
                 ...config.monitoredIntegrationPackages ?? [],
                 {
                     packageId: selectedPackageId,
-                    packageSecrets: {},
                     ignoredArtifactIds: excludedArtifactIds,
                 },
             ]

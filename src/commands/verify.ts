@@ -30,7 +30,7 @@ export default class VerifyConfiguration extends Command {
             this.log('');
 
             // Load the packageSecrets from the configuration file
-            const packageSecrets = config.monitoredIntegrationPackages?.find(p => p.packageId === monitoredPackage.packageId)?.packageSecrets;
+            const { environmentSecrets } = config;
 
             ux.action.start(`Verifying configurations for package "${monitoredPackage.packageId}"...`);
 
@@ -44,7 +44,7 @@ export default class VerifyConfiguration extends Command {
 
                 // Get the local and remote configurtions for this artifact
                 const newestLocalConfigurations = await getNewestLocalArtifactConfigurations(monitoredPackage.packageId, packageArtifact.Id);
-                const remoteConfigurations = await getIntegrationArtifactConfigurations({ environment, artifactId: packageArtifact.Id, artifactVersion: packageArtifact.Version, packageSecrets });
+                const remoteConfigurations = await getIntegrationArtifactConfigurations({ environment, artifactId: packageArtifact.Id, artifactVersion: packageArtifact.Version, environmentSecrets });
 
                 // Check if the remote artifact version is identical to the local artifact configuration version
                 const configurationHasIdenticalVersion = packageArtifact.Version === newestLocalConfigurations.artifactVersion;

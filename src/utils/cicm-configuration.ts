@@ -32,12 +32,12 @@ export const ciEnvironment = z.object({
 export const monitoredIntegrationPackage = z.object({
     packageId: z.string(),
     ignoredArtifactIds: z.array(z.string()),
-    packageSecrets: z.record(z.string(), z.string()),
 });
 
 const configurationSchema = z.object({
     environments: z.array(ciEnvironment),
     monitoredIntegrationPackages: z.array(monitoredIntegrationPackage).optional(),
+    environmentSecrets: z.record(z.string(), z.string()),
 });
 
 function getConfigurationFilePath(path: null | string = null) {

@@ -84,6 +84,7 @@ export default class Init extends Command {
     // Write the initial environment to the .cicm.json file
     await setConfig({
       environments: [initialEnvironment],
+      environmentSecrets: {}
     }, projectName);
 
     // Create a .gitignore file to exclude the .env file (secrets)

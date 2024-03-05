@@ -75,10 +75,10 @@ interface GetIntegrationArtifactConfigurationsOptions {
     artifactId: string;
     artifactVersion: string;
     environment: z.infer<typeof ciEnvironment>;
-    packageSecrets?: Record<string, string>;
+    environmentSecrets?: Record<string, string>;
 }
 
-export async function getIntegrationArtifactConfigurations({ environment, artifactId, artifactVersion, packageSecrets }: GetIntegrationArtifactConfigurationsOptions) {
+export async function getIntegrationArtifactConfigurations({ environment, artifactId, artifactVersion, environmentSecrets }: GetIntegrationArtifactConfigurationsOptions) {
     // Execute the request to get the integration designtime artifact configurations
     const response = await integrationDesigntimeArtifactsApi.requestBuilder()
         .getByKey(artifactId, artifactVersion)
@@ -90,9 +90,9 @@ export async function getIntegrationArtifactConfigurations({ environment, artifa
     const results = z.array(integrationArtifactConfigurationSchema).parse(response?.data?.d?.results);
     if (!results || !Array.isArray(results)) throw new Error('Invalid /Configurations response from CPI');
 
-    // Remove the package secrets from the configurations
-    if (packageSecrets) {
-        for (const [secretName, secretValue] of Object.entries(packageSecrets)) {
+    // Remove the environment secrets from the configurations
+    if (environmentSecrets) {
+        for (const [secretName, secretValue] of Object.entries(environmentSecrets)) {
             for (const configuration of results) {
                 // Make sure the configuration names never contain any secrets
                 if (configuration.ParameterKey.includes(secretName)) {

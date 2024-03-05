@@ -4,9 +4,9 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { testCredentials } from '../utils/ci.js';
 import { ciEnvironment, ciRegions, setConfig } from '../utils/cicm-configuration.js';
-import { secretsSchema, setSecrets } from '../utils/secrets.js';
+import { secretsSchema, setSecrets } from '../utils/cicm-secrets.js';
+import { testCredentials } from '../utils/cloud-integration.js';
 
 export default class Init extends Command {
   static description = 'Initialize a new Cloud Integration Configuration Manager project.';
@@ -53,7 +53,7 @@ export default class Init extends Command {
       accountShortName: await input({ message: 'CPI Account Short Name:' }),
       sslHost: await input({ message: 'CPI SSL Host:' }),
       region: await select({
-        message: 'CPI Region:',
+        message: 'CI Region:',
         choices: ciRegions.map(region => ({
           value: region,
           name: region,
@@ -82,7 +82,7 @@ export default class Init extends Command {
     await mkdir(projectPath);
 
     // Write the initial environment to the .cicm.json file
-    await setConfig(this, {
+    await setConfig({
       environments: [initialEnvironment],
     }, projectName);
 

@@ -1,4 +1,3 @@
-import { Command } from "@oclif/core";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from 'node:path';
 import { z } from "zod";
@@ -70,7 +69,7 @@ export async function getConfig(path: null | string = null) {
     return parsedConfiguration.data;
 }
 
-export async function setConfig(command: Command, configuration: z.infer<typeof configurationSchema>, path: null | string = null) {
+export async function setConfig(configuration: z.infer<typeof configurationSchema>, path: null | string = null) {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath(path);
 
@@ -80,7 +79,4 @@ export async function setConfig(command: Command, configuration: z.infer<typeof 
 
     // Write the configuration to the cicm-config.json file
     await writeFile(configurationFilePath, JSON.stringify(configuration, null, 2));
-
-    // Log the result
-    command.log(`⚙️ Updated ${configurationFilePath}`);
 }

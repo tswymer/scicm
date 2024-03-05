@@ -1,9 +1,9 @@
 import { checkbox, select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 
-import { createLocalArtifactConfiguration } from '../../utils/artifact-configuration.js';
-import { buildCPIODataURL, getIntegrationDesigntimeArtifactConfigurations, getIntegrationPackages, getIntergrationPackageDesigntimeArtifacts } from '../../utils/ci.js';
+import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getConfig, setConfig } from '../../utils/cicm-configuration.js';
+import { buildCPIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 
 export default class AddPackage extends Command {
     async run(): Promise<void> {
@@ -54,7 +54,7 @@ export default class AddPackage extends Command {
 
         // Get the integration package designtime artifacts to monitor
         ux.action.start(`Loading integration artifacts from package "${selectedPackageId}"...`);
-        const integrationDesigntimeArtifacts = await getIntergrationPackageDesigntimeArtifacts(environment, selectedPackageId);
+        const integrationDesigntimeArtifacts = await getIntergrationPackageArtifacts(environment, selectedPackageId);
         ux.action.stop();
 
         this.log('');
@@ -82,7 +82,7 @@ export default class AddPackage extends Command {
             .map(artifact => artifact.Id);
 
         // Update the configuration
-        await setConfig(this, {
+        await setConfig({
             ...config,
             monitoredIntegrationPackages: [
                 ...config.monitoredIntegrationPackages ?? [],
@@ -98,7 +98,7 @@ export default class AddPackage extends Command {
 
         // Export the configurations for the selected artifacts
         ux.action.start(`Exporting integration artifact configurations...`);
-        const integrationArtifacts = await getIntergrationPackageDesigntimeArtifacts(environment, selectedPackageId);
+        const integrationArtifacts = await getIntergrationPackageArtifacts(environment, selectedPackageId);
 
         let exportedConfigurations = 0;
 
@@ -108,7 +108,7 @@ export default class AddPackage extends Command {
             if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${selectedPackageId}".`);
 
             // Get the configurations for the artifact
-            const artifactConfigurations = await getIntegrationDesigntimeArtifactConfigurations({
+            const artifactConfigurations = await getIntegrationArtifactConfigurations({
                 artifactId: artifact.Id,
                 artifactVersion: artifact.Version,
                 environment,
@@ -117,7 +117,7 @@ export default class AddPackage extends Command {
 
             // Create the artifact configuration management file
             const createdAt = new Date().toISOString();
-            await createLocalArtifactConfiguration(this, selectedPackageId, {
+            await createManagedArtifact(selectedPackageId, {
                 _createdAt: createdAt,
                 artifactId: artifact.Id,
                 artifactConfigurations: [{
@@ -126,6 +126,8 @@ export default class AddPackage extends Command {
                     configurations: artifactConfigurations.configurations
                 }]
             });
+
+            this.log(`✅ Exported ${artifactConfigurations.configurations.length ?? 0}\tconfiguration(s) for "${artifact.Id}"`);
         }
 
         ux.action.stop(`export complete!\n`);

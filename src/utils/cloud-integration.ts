@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { integrationContent } from "../cpi-odata/IntegrationContent/index.js";
 import { ciEnvironment } from "./cicm-configuration.js";
-import { getSecrets, secretsSchema } from "./secrets.js";
+import { getSecrets, secretsSchema } from "./cicm-secrets.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
@@ -10,7 +10,7 @@ export function buildCPIODataURL({ accountShortName, region, sslHost }: z.infer<
     return `https://${accountShortName}-tmn.${sslHost}.${region}/api/v1`;
 }
 
-const integrationDesigntimeArtifactSchema = z.object({
+const integrationArtifactSchema = z.object({
     Id: z.string(),
     Version: z.string(),
     PackageId: z.string().optional(),
@@ -18,7 +18,7 @@ const integrationDesigntimeArtifactSchema = z.object({
     Description: z.string().optional(),
 });
 
-export const integrationDesigntimeArtifactConfigurationSchema = z.object({
+export const integrationArtifactConfigurationSchema = z.object({
     ParameterKey: z.string(),
     ParameterValue: z.string(),
     DataType: z.enum([
@@ -54,7 +54,7 @@ export async function getIntegrationPackages(environment: z.infer<typeof ciEnvir
         .execute(await getExecutionDestination(environment));
 }
 
-export async function getIntergrationPackageDesigntimeArtifacts(environment: z.infer<typeof ciEnvironment>, integrationPackageId: string) {
+export async function getIntergrationPackageArtifacts(environment: z.infer<typeof ciEnvironment>, integrationPackageId: string) {
     const response = await integrationPackagesApi.requestBuilder()
         .getByKey(integrationPackageId)
         .appendPath('/IntegrationDesigntimeArtifacts')
@@ -66,21 +66,19 @@ export async function getIntergrationPackageDesigntimeArtifacts(environment: z.i
 
     const results = response?.data?.d?.results;
 
-    if (!results || !Array.isArray(results)) {
-        throw new Error('Invalid /IntegrationDesigntimeArtifacts response from CPI');
-    }
+    if (!results || !Array.isArray(results)) throw new Error('Invalid /IntegrationDesigntimeArtifacts response from CPI');
 
-    return z.array(integrationDesigntimeArtifactSchema).parse(results);
+    return z.array(integrationArtifactSchema).parse(results);
 }
 
-interface GetIntegrationDesigntimeArtifactConfigurationsOptions {
+interface GetIntegrationArtifactConfigurationsOptions {
     artifactId: string;
     artifactVersion: string;
     environment: z.infer<typeof ciEnvironment>;
     packageSecrets?: Record<string, string>;
 }
 
-export async function getIntegrationDesigntimeArtifactConfigurations({ environment, artifactId, artifactVersion, packageSecrets }: GetIntegrationDesigntimeArtifactConfigurationsOptions) {
+export async function getIntegrationArtifactConfigurations({ environment, artifactId, artifactVersion, packageSecrets }: GetIntegrationArtifactConfigurationsOptions) {
     // Execute the request to get the integration designtime artifact configurations
     const response = await integrationDesigntimeArtifactsApi.requestBuilder()
         .getByKey(artifactId, artifactVersion)
@@ -89,7 +87,7 @@ export async function getIntegrationDesigntimeArtifactConfigurations({ environme
 
     // Because this is a sub-path, we have to parse the response ourselves
     if (response.status !== 200) throw new Error(`Failed to get integration designtime artifact configurations: ${response.status} - ${response.statusText}`);
-    const results = z.array(integrationDesigntimeArtifactConfigurationSchema).parse(response?.data?.d?.results);
+    const results = z.array(integrationArtifactConfigurationSchema).parse(response?.data?.d?.results);
     if (!results || !Array.isArray(results)) throw new Error('Invalid /Configurations response from CPI');
 
     // Remove the package secrets from the configurations
@@ -110,6 +108,9 @@ export async function getIntegrationDesigntimeArtifactConfigurations({ environme
             }
         }
     }
+
+    // Sanity check that there is a version
+    if (!artifactVersion) throw new Error(`No artifact version found for artifact "${artifactId}" (v.${artifactVersion})`);
 
     return {
         artifactVersion,

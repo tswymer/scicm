@@ -1,70 +1,9 @@
-import { Command } from "@oclif/core";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { z } from "zod";
+import { getNewestLocalArtifactConfigurations } from "./artifact-management.js";
+import { getIntegrationArtifactConfigurations } from "./cloud-integration.js";
 
-import { getIntegrationDesigntimeArtifactConfigurations, integrationDesigntimeArtifactConfigurationSchema } from "./ci.js";
-
-const artifactConfigurationsSchema = z.object({
-    _createdAt: z.string().datetime(),
-    artifactId: z.string(),
-    artifactConfigurations: z.array(z.object({
-        _createdAt: z.string().datetime(),
-        artifactVersion: z.string(),
-        configurations: z.array(integrationDesigntimeArtifactConfigurationSchema),
-    })),
-});
-
-export async function createLocalArtifactConfiguration(command: Command, packageId: string, artifactConfiguration: z.infer<typeof artifactConfigurationsSchema>) {
-    // Check if the integration package directory exists in the "configuration" directory
-    const integrationPackageDirectoryPath = join(process.cwd(), 'configuration', packageId);
-    const integrationPackageDirectoryExists = await access(integrationPackageDirectoryPath).then(() => true).catch(() => false);
-    if (!integrationPackageDirectoryExists) await mkdir(integrationPackageDirectoryPath, { recursive: true });
-
-    // Check there isn't already a configuration for the artifact
-    const artifactConfigurationFilePath = join(integrationPackageDirectoryPath, `${artifactConfiguration.artifactId}.json`);
-    if (await access(artifactConfigurationFilePath).then(() => true).catch(() => false)) {
-        command.error(`Artifact configuration "${artifactConfigurationFilePath}" already exists.`);
-    }
-
-    // Create the initial artifact configuration file
-    await writeFile(artifactConfigurationFilePath, JSON.stringify(artifactConfiguration, null, 2));
-    command.log(`✅ Exported ${artifactConfiguration.artifactConfigurations.at(0)?.configurations.length ?? 0}\tconfiguration(s) for "${artifactConfiguration.artifactId}"`);
-}
-
-export async function getNewestLocalArtifactConfigurations(command: Command, packageId: string, artifactId: string) {
-    // Get the artifact configuration
-    const artifactConfigurationFilePath = join(process.cwd(), 'configuration', packageId, `${artifactId}.json`);
-    if (!await access(artifactConfigurationFilePath).then(() => true).catch(() => false)) {
-        command.error(`Artifact configuration "${artifactConfigurationFilePath}" does not exist.`);
-    }
-
-    const artifactConfiguration = artifactConfigurationsSchema.parse(JSON.parse(await readFile(artifactConfigurationFilePath, 'utf8')));
-
-    // Sort the artifact configurations by version
-    artifactConfiguration.artifactConfigurations.sort((a, b) => a.artifactVersion.localeCompare(b.artifactVersion));
-
-    if (artifactConfiguration.artifactConfigurations.length > 1) {
-        command.warn(artifactConfiguration.artifactConfigurations.map(artifactConfiguration => `${artifactConfiguration.artifactVersion}`).join('\n'));
-    }
-
-    // Get the newest artifact configurations by version
-    const newestArtifactConfiguration = artifactConfiguration.artifactConfigurations.at(-1);
-
-    if (!newestArtifactConfiguration) {
-        command.error(new Error([
-            `No local configurations found for artifact "${artifactId}" from package "${packageId}".`,
-            'Please run the "add:package" command to add the artifact to the configuration.'
-        ].join('\n')));
-    }
-
-    return newestArtifactConfiguration;
-}
-
-type CompareArtifactConfigurationsOptions = {
-    artifactVersion: string;
-    newestLocalConfigurations: Awaited<ReturnType<typeof getNewestLocalArtifactConfigurations>>;
-    remoteConfigurations: Awaited<ReturnType<typeof getIntegrationDesigntimeArtifactConfigurations>>;
+type ArtifactConfigurations = {
+    localConfigurations: Awaited<ReturnType<typeof getNewestLocalArtifactConfigurations>>;
+    remoteConfigurations: Awaited<ReturnType<typeof getIntegrationArtifactConfigurations>>;
 };
 
 type CompareArtifactConfigurationResponse =
@@ -72,18 +11,14 @@ type CompareArtifactConfigurationResponse =
     | { configurationKey: string, localValue: string, remoteValue: string, type: "LOCAL_CONFIGURATION_MISMATCH" | "LOCAL_CONFIGURATION_MISSING" }
     | { type: "NO_LOCAL_ARTIFACT_VERSION" };
 
-export function compareArtifactConfigurations({ artifactVersion, newestLocalConfigurations, remoteConfigurations: remoteConfigurationsWithVersion }: CompareArtifactConfigurationsOptions): CompareArtifactConfigurationResponse {
-    // Check if the remote artifact version is identical to the local artifact configuration version
-    const hasIdenticalVersionConfiguration = newestLocalConfigurations.artifactVersion === artifactVersion;
-    if (!hasIdenticalVersionConfiguration) return { type: 'NO_LOCAL_ARTIFACT_VERSION' }
-
+export function compareArtifactConfigurations({ localConfigurations, remoteConfigurations: remoteConfigurationsWithVersion }: ArtifactConfigurations): CompareArtifactConfigurationResponse {
     // Get the configurations from the remote artifact
     const { configurations: remoteConfigurations } = remoteConfigurationsWithVersion;
 
     // For every local configuration, compare it the remote configuration
     let comparisonCount = 0;
     const unusedLocalConfigurationKeys: string[] = [];
-    for (const localConfiguration of newestLocalConfigurations.configurations ?? []) {
+    for (const localConfiguration of localConfigurations.configurations ?? []) {
         const remoteConfigurationIndex = remoteConfigurations.findIndex(remoteConfiguration => remoteConfiguration.ParameterKey === localConfiguration.ParameterKey);
         if (remoteConfigurationIndex === -1) {
             unusedLocalConfigurationKeys.push(localConfiguration.ParameterKey);
@@ -118,3 +53,10 @@ export function compareArtifactConfigurations({ artifactVersion, newestLocalConf
 
     return { type: 'OK', comparisonCount, unusedLocalConfigurationKeys };
 }
+
+// type SafeConfigurationVersionUpdateResponse =
+//     | { type: 'OK' };
+
+// export function safeConfigurationVersionUpdate({ localConfigurations, remoteConfigurations }: ArtifactConfigurations): SafeConfigurationVersionUpdateResponse {
+//     return { type: 'OK' };
+// }

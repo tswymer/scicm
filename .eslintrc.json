@@ -7,7 +7,7 @@
     "unicorn/filename-case": "off",
     "unicorn/no-abusive-eslint-disable": "off",
     "unicorn/no-array-for-each": "off",
-    "unicorn/no-await-expression-member": "off",
+    "unicorn/no-await-expressØion-member": "off",
     "unicorn/no-useless-undefined": "off",
     "valid-jsdoc": "off",
     "padding-line-between-statements": "off"

@@ -98,13 +98,13 @@ export default class AddPackage extends Command {
 
         // Export the configurations for the selected artifacts
         ux.action.start(`Exporting integration artifact configurations...`);
-        const packageArtifacts = await getIntergrationPackageDesigntimeArtifacts(environment, selectedPackageId);
+        const integrationArtifacts = await getIntergrationPackageDesigntimeArtifacts(environment, selectedPackageId);
 
         let exportedConfigurations = 0;
 
         for (const selectedArtifact of selectedIntegrationArtifacts) {
             // Get the artifact from the list of monitored artifacts
-            const artifact = packageArtifacts.find(artifact => artifact.Id === selectedArtifact);
+            const artifact = integrationArtifacts.find(artifact => artifact.Id === selectedArtifact);
             if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${selectedPackageId}".`);
 
             // Get the configurations for the artifact
@@ -113,7 +113,7 @@ export default class AddPackage extends Command {
                 artifactVersion: artifact.Version,
                 environment,
             });
-            exportedConfigurations += artifactConfigurations.length;
+            exportedConfigurations += artifactConfigurations.configurations.length;
 
             // Create the artifact configuration management file
             const createdAt = new Date().toISOString();
@@ -123,7 +123,7 @@ export default class AddPackage extends Command {
                 artifactConfigurations: [{
                     _createdAt: createdAt,
                     artifactVersion: artifact.Version,
-                    configurations: artifactConfigurations,
+                    configurations: artifactConfigurations.configurations
                 }]
             });
         }

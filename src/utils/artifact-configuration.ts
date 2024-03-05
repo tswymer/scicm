@@ -72,10 +72,13 @@ type CompareArtifactConfigurationResponse =
     | { configurationKey: string, localValue: string, remoteValue: string, type: "LOCAL_CONFIGURATION_MISMATCH" | "LOCAL_CONFIGURATION_MISSING" }
     | { type: "NO_LOCAL_ARTIFACT_VERSION" };
 
-export function compareArtifactConfigurations({ artifactVersion, newestLocalConfigurations, remoteConfigurations }: CompareArtifactConfigurationsOptions): CompareArtifactConfigurationResponse {
+export function compareArtifactConfigurations({ artifactVersion, newestLocalConfigurations, remoteConfigurations: remoteConfigurationsWithVersion }: CompareArtifactConfigurationsOptions): CompareArtifactConfigurationResponse {
     // Check if the remote artifact version is identical to the local artifact configuration version
     const hasIdenticalVersionConfiguration = newestLocalConfigurations.artifactVersion === artifactVersion;
     if (!hasIdenticalVersionConfiguration) return { type: 'NO_LOCAL_ARTIFACT_VERSION' }
+
+    // Get the configurations from the remote artifact
+    const { configurations: remoteConfigurations } = remoteConfigurationsWithVersion;
 
     // For every local configuration, compare it the remote configuration
     let comparisonCount = 0;

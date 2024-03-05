@@ -111,5 +111,8 @@ export async function getIntegrationDesigntimeArtifactConfigurations({ environme
         }
     }
 
-    return results;
+    return {
+        artifactVersion,
+        configurations: results,
+    };
 }

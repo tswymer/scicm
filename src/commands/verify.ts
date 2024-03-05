@@ -47,7 +47,7 @@ export default class VerifyConfiguration extends Command {
                 const remoteConfigurations = await getIntegrationDesigntimeArtifactConfigurations({ environment, artifactId: packageArtifact.Id, artifactVersion: packageArtifact.Version, packageSecrets });
 
                 // Compare the local and remote configurations
-                this.log(`Verifying ${remoteConfigurations.length}\tconfiguration(s) for artifact "${packageArtifact.Id}"...`);
+                this.log(`Verifying ${remoteConfigurations.configurations.length}\tconfiguration(s) for artifact "${packageArtifact.Id}"...`);
                 const comparedConfigurations = compareArtifactConfigurations({
                     artifactVersion: packageArtifact.Version,
                     newestLocalConfigurations,

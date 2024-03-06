@@ -46,8 +46,8 @@ export type CICMConfig = {
     managedIntegrationPackages?: z.infer<typeof managedIntegrationPackageSchema>[],
 };
 
-function getConfigurationFilePath() {
-    return join(process.cwd(), 'cicm-config.json');
+function getConfigurationFilePath(projectPath: string | undefined = undefined) {
+    return join(projectPath ?? process.cwd(), 'cicm-config.json');
 }
 
 export async function getConfig(accountShortName: string) {
@@ -75,9 +75,9 @@ export async function getConfig(accountShortName: string) {
     return parsedConfiguration.data;
 }
 
-export async function setConfig(configuration: z.infer<typeof cicmConfigurationSchema>) {
+export async function setConfig(configuration: z.infer<typeof cicmConfigurationSchema>, projectPath: string | undefined = undefined) {
     // Create the path to the configuration file
-    const configurationFilePath = getConfigurationFilePath();
+    const configurationFilePath = getConfigurationFilePath(projectPath);
 
     // Sort the lists in the configuration
     configuration.managedIntegrationPackages?.sort((a, b) => a.packageId.localeCompare(b.packageId));

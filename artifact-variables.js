@@ -3,7 +3,6 @@ export function getArtifactVariables(accountShortName) {
   console.log('Getting artifact variables for:', accountShortName)
 
   return {
-    // The name of the secret in the secret manager
-    secret: 'MY_SECRET',
+    MY_VARIABLE: 'MY_VARIABLE_VALUE',
   }
 }

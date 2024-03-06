@@ -2,6 +2,7 @@ import { Args, Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getNewestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
+import { getArtifactVariables } from '../utils/artifact-variables.js';
 import { getConfig, getEnvironment } from '../utils/cicm-configuration.js';
 import { getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
 import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
@@ -18,7 +19,7 @@ export default class VerifyConfiguration extends Command {
     async run(): Promise<void> {
         const { args: { accountShortName }, flags: { safeUpdate } } = await this.parse(VerifyConfiguration);
 
-        const config = await getConfig(accountShortName);
+        const config = await getConfig();
         const environment = getEnvironment(config, accountShortName);
 
         this.log('Verifying Cloud Integration Configurations...');
@@ -27,7 +28,7 @@ export default class VerifyConfiguration extends Command {
             this.log('');
 
             // Load the packageSecrets from the configuration file
-            const { integrationEnvironmentVariables: environmentSecrets } = config;
+            const artifactVariables = await getArtifactVariables(accountShortName);
 
             ux.action.start(`Verifying configurations for package "${monitoredPackage.packageId}"...`);
 
@@ -41,7 +42,12 @@ export default class VerifyConfiguration extends Command {
 
                 // Get the local and remote configurtions for this artifact
                 const newestLocalConfigurations = await getNewestLocalArtifactConfigurations(monitoredPackage.packageId, packageArtifact.Id);
-                const remoteConfigurations = await getIntegrationArtifactConfigurations({ environment, artifactId: packageArtifact.Id, artifactVersion: packageArtifact.Version, environmentSecrets });
+                const remoteConfigurations = await getIntegrationArtifactConfigurations({
+                    environment,
+                    artifactId: packageArtifact.Id,
+                    artifactVersion: packageArtifact.Version,
+                    artifactVariables
+                });
 
                 // Check if the remote artifact version is identical to the local artifact configuration version
                 const configurationHasIdenticalVersion = packageArtifact.Version === newestLocalConfigurations.artifactVersion;

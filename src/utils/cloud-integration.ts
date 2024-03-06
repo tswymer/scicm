@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { integrationContent } from "../cpi-odata/IntegrationContent/index.js";
 import { ciEnvironmentSchema } from "./cicm-configuration.js";
-import { getSecrets, secretsSchema } from "./cicm-secrets.js";
+import { cicmSecretsSchema, getCICMSecrets } from "./cicm-secrets.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
@@ -28,23 +28,23 @@ export const integrationArtifactConfigurationSchema = z.object({
     ]),
 });
 
-export async function testCredentials(environment: z.infer<typeof ciEnvironmentSchema>, secrets: z.infer<typeof secretsSchema>) {
+export async function testCredentials(environment: z.infer<typeof ciEnvironmentSchema>, cicmSecrets: z.infer<typeof cicmSecretsSchema>) {
     await integrationPackagesApi.requestBuilder()
         .getAll()
         .execute({
             url: buildCPIODataURL(environment),
-            username: secrets.CPI_USERNAME,
-            password: secrets.CPI_PASSWORD,
+            username: cicmSecrets.CPI_USERNAME,
+            password: cicmSecrets.CPI_PASSWORD,
         });
 }
 
 async function getExecutionDestination(environment: z.infer<typeof ciEnvironmentSchema>) {
-    const secrets = await getSecrets();
+    const cicmSecrets = await getCICMSecrets();
 
     return {
         url: buildCPIODataURL(environment),
-        username: secrets.CPI_USERNAME,
-        password: secrets.CPI_PASSWORD,
+        username: cicmSecrets.CPI_USERNAME,
+        password: cicmSecrets.CPI_PASSWORD,
     } as const;
 }
 
@@ -73,12 +73,12 @@ export async function getIntergrationPackageArtifacts(environment: z.infer<typeo
 
 interface GetIntegrationArtifactConfigurationsOptions {
     artifactId: string;
+    artifactVariables?: Record<string, string>;
     artifactVersion: string;
     environment: z.infer<typeof ciEnvironmentSchema>;
-    environmentSecrets?: Record<string, string>;
 }
 
-export async function getIntegrationArtifactConfigurations({ environment, artifactId, artifactVersion, environmentSecrets }: GetIntegrationArtifactConfigurationsOptions) {
+export async function getIntegrationArtifactConfigurations({ environment, artifactId, artifactVersion, artifactVariables }: GetIntegrationArtifactConfigurationsOptions) {
     // Execute the request to get the integration designtime artifact configurations
     const response = await integrationDesigntimeArtifactsApi.requestBuilder()
         .getByKey(artifactId, artifactVersion)
@@ -91,19 +91,19 @@ export async function getIntegrationArtifactConfigurations({ environment, artifa
     if (!results || !Array.isArray(results)) throw new Error('Invalid /Configurations response from CPI');
 
     // Remove the environment secrets from the configurations
-    if (environmentSecrets) {
-        for (const [secretName, secretValue] of Object.entries(environmentSecrets)) {
+    if (artifactVariables) {
+        for (const [variableName, variableValue] of Object.entries(artifactVariables)) {
             for (const configuration of results) {
                 // Make sure the configuration names never contain any secrets
-                if (configuration.ParameterKey.includes(secretName)) {
+                if (configuration.ParameterKey.includes(variableName)) {
                     throw new Error([
-                        `Secret "${secretName}" found in configuration key "${configuration.ParameterKey}" for artifact "${artifactId}" (v.${artifactVersion})`
+                        `Secret "${variableName}" found in configuration key "${configuration.ParameterKey}" for artifact "${artifactId}" (v.${artifactVersion})`
                     ].join('\n'));
                 }
 
                 // Remove the secret from the configuration value
-                if (configuration.ParameterValue.includes(secretValue)) {
-                    configuration.ParameterValue = configuration.ParameterValue.replaceAll(secretValue, `{{${secretName}}}`);
+                if (configuration.ParameterValue.includes(variableValue)) {
+                    configuration.ParameterValue = configuration.ParameterValue.replaceAll(variableValue, `{{${variableName}}}`);
                 }
             }
         }

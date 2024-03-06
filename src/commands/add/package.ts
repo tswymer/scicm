@@ -2,19 +2,19 @@ import { checkbox, select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
-import { getAllEnvironments, getConfig, getEnvironment, setConfig } from '../../utils/cicm-configuration.js';
+import { getConfig, getEnvironment, setConfig } from '../../utils/cicm-configuration.js';
 import { buildCPIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 
 export default class AddPackage extends Command {
     async run(): Promise<void> {
         this.log('Add a new Intergration Package to the Cloud Integration Configuration Manager\n');
 
-        const environments = await getAllEnvironments();
+        const { integrationEnvironments } = await getConfig();
 
         // Select the environment to add the integration package from
         const selectedEnvironment = await select({
             message: 'Select the environment to add the integration package from:',
-            choices: environments.map(environment => ({
+            choices: integrationEnvironments.map(environment => ({
                 value: environment.accountShortName,
                 name: `${buildCPIODataURL({
                     accountShortName: environment.accountShortName,
@@ -26,7 +26,7 @@ export default class AddPackage extends Command {
 
         this.log('');
 
-        const config = await getConfig(selectedEnvironment);
+        const config = await getConfig();
         const environment = getEnvironment(config, selectedEnvironment);
 
         // Get the integration package to add from the user

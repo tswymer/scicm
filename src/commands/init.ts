@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 
 import { ciEnvironmentSchema, ciRegions, setConfig } from '../utils/cicm-configuration.js';
-import { secretsSchema, setSecrets } from '../utils/cicm-secrets.js';
+import { cicmSecretsSchema, setCICMSecrets } from '../utils/cicm-secrets.js';
 import { testCredentials } from '../utils/cloud-integration.js';
 
 export default class Init extends Command {
@@ -29,10 +29,10 @@ export default class Init extends Command {
 
     // Gather the secrets from the user
     this.log('\n(OAuth later on, Basic auth for now).');
-    const secrets = {
+    const cicmSecrets = {
       'CPI_USERNAME': await input({ message: 'CPI OData API Username:' }),
       'CPI_PASSWORD': await password({ message: 'CPI OData API Password:' }),
-    } satisfies z.infer<typeof secretsSchema>;
+    } satisfies z.infer<typeof cicmSecretsSchema>;
 
     this.log('');
 
@@ -66,7 +66,7 @@ export default class Init extends Command {
     // Check the connection to the CPI instance
     ux.action.start('Checking connection...');
     try {
-      await testCredentials(initialEnvironment, secrets);
+      await testCredentials(initialEnvironment, cicmSecrets);
       ux.action.stop('Connection successful! 🌎\n');
     } catch (error) {
       ux.action.stop('Connection failed! ❌');
@@ -84,7 +84,6 @@ export default class Init extends Command {
     // Write the initial environment to the .cicm.json file
     await setConfig({
       integrationEnvironments: [initialEnvironment],
-      integrationEnvironmentVariables: {}
     }, projectPath);
 
     // Create a .gitignore file to exclude the .env file (secrets)
@@ -93,7 +92,7 @@ export default class Init extends Command {
     this.log(`✅ Updated ${gitIngnoreFilePath} to exclude .env`);
 
     // Write the secrets to the .env file
-    await setSecrets(this, secrets, projectName);
+    await setCICMSecrets(this, cicmSecrets, projectName);
 
     // Create the package.json file
     const packageJsonFilePath = join(projectPath, 'package.json');

@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from 'node:path';
 import { z } from "zod";
 
@@ -37,11 +37,9 @@ export const managedIntegrationPackageSchema = z.object({
 const cicmConfigurationSchema = z.object({
     integrationEnvironments: z.array(ciEnvironmentSchema),
     managedIntegrationPackages: z.array(managedIntegrationPackageSchema).optional(),
-    integrationEnvironmentVariables: z.record(z.string(), z.string()),
 });
 
 export type CICMConfig = {
-    integrationEnvironmentVariables: (accountShortName: string) => Record<string, string>,
     integrationEnvironments: z.infer<typeof ciEnvironmentSchema>[],
     managedIntegrationPackages?: z.infer<typeof managedIntegrationPackageSchema>[],
 };
@@ -50,19 +48,15 @@ function getConfigurationFilePath(projectPath: string | undefined = undefined) {
     return join(projectPath ?? process.cwd(), 'cicm-config.json');
 }
 
-export async function getConfig(accountShortName: string) {
+export async function getConfig() {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath();
 
-    // Import the configuration file
-    const configFile = await import(configurationFilePath) as Partial<CICMConfig>;
+    // Read the configuration file
+    const configuration = JSON.parse(await readFile(configurationFilePath, 'utf8'));
 
     // Parse the configuration object content
-    const parsedConfiguration = cicmConfigurationSchema.safeParse({
-        integrationEnvironments: configFile.integrationEnvironments,
-        integrationEnvironmentVariables: configFile.integrationEnvironmentVariables!(accountShortName),
-        managedIntegrationPackages: configFile.managedIntegrationPackages,
-    } satisfies Partial<z.infer<typeof cicmConfigurationSchema>>);
+    const parsedConfiguration = cicmConfigurationSchema.safeParse(configuration);
 
     // Check if the configuration is valid
     if (!parsedConfiguration.success) {
@@ -85,27 +79,6 @@ export async function setConfig(configuration: z.infer<typeof cicmConfigurationS
 
     // Write the configuration to the cicm-config.json file
     await writeFile(configurationFilePath, JSON.stringify(configuration, null, 2));
-}
-
-export async function getAllEnvironments() {
-    // Create the path to the configuration file
-    const configurationFilePath = getConfigurationFilePath();
-
-    // Import the configuration file
-    const configFile = await import(configurationFilePath) as Partial<CICMConfig>;
-
-    // Parse the configuration object content
-    const parsedEnvironments = z.array(ciEnvironmentSchema).safeParse(configFile.integrationEnvironments);
-
-    // Check if the configuration is valid
-    if (!parsedEnvironments.success) {
-        throw new Error([
-            `Failed to parse environments from ${configurationFilePath}:`,
-            ...parsedEnvironments.error.errors.map(error => JSON.stringify(error, null, 2)),
-        ].join('\n'));
-    }
-
-    return parsedEnvironments.data;
 }
 
 export function getEnvironment(config: z.infer<typeof cicmConfigurationSchema>, environmentAccountShortName: string) {

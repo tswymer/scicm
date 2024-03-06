@@ -11,6 +11,7 @@
     "unicorn/no-useless-undefined": "off",
     "valid-jsdoc": "off",
     "padding-line-between-statements": "off",
-    "unicorn/no-negated-condition": "off"
+    "unicorn/no-negated-condition": "off",
+    "unicorn/switch-case-braces": "off"
   }
 }

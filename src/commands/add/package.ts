@@ -2,6 +2,7 @@ import { checkbox, select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
+import { getArtifactVariables } from '../../utils/artifact-variables.js';
 import { getConfig, getEnvironment, setConfig } from '../../utils/cicm-configuration.js';
 import { buildCPIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 
@@ -28,6 +29,7 @@ export default class AddPackage extends Command {
 
         const config = await getConfig();
         const environment = getEnvironment(config, selectedEnvironment);
+        const artifactVariables = await getArtifactVariables(environment.accountShortName);
 
         // Get the integration package to add from the user
         ux.action.start('Loading integration packages from SAP CPI...');
@@ -110,6 +112,7 @@ export default class AddPackage extends Command {
                 artifactId: artifact.Id,
                 artifactVersion: artifact.Version,
                 environment,
+                artifactVariables,
             });
             exportedConfigurations += artifactConfigurations.configurations.length;
 

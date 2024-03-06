@@ -46,7 +46,7 @@ export default class VerifyConfiguration extends Command {
                     environment,
                     artifactId: packageArtifact.Id,
                     artifactVersion: packageArtifact.Version,
-                    artifactVariables
+                    artifactVariables,
                 });
 
                 // Check if the remote artifact version is identical to the local artifact configuration version

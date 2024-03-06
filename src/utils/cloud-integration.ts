@@ -73,7 +73,7 @@ export async function getIntergrationPackageArtifacts(environment: z.infer<typeo
 
 interface GetIntegrationArtifactConfigurationsOptions {
     artifactId: string;
-    artifactVariables?: Record<string, string>;
+    artifactVariables: Record<string, string>;
     artifactVersion: string;
     environment: z.infer<typeof ciEnvironmentSchema>;
 }
@@ -91,23 +91,23 @@ export async function getIntegrationArtifactConfigurations({ environment, artifa
     if (!results || !Array.isArray(results)) throw new Error('Invalid /Configurations response from CPI');
 
     // Remove the environment secrets from the configurations
-    if (artifactVariables) {
-        for (const [variableName, variableValue] of Object.entries(artifactVariables)) {
-            for (const configuration of results) {
-                // Make sure the configuration names never contain any secrets
-                if (configuration.ParameterKey.includes(variableName)) {
-                    throw new Error([
-                        `Secret "${variableName}" found in configuration key "${configuration.ParameterKey}" for artifact "${artifactId}" (v.${artifactVersion})`
-                    ].join('\n'));
-                }
 
-                // Remove the secret from the configuration value
-                if (configuration.ParameterValue.includes(variableValue)) {
-                    configuration.ParameterValue = configuration.ParameterValue.replaceAll(variableValue, `{{${variableName}}}`);
-                }
+    for (const [variableName, variableValue] of Object.entries(artifactVariables)) {
+        for (const configuration of results) {
+            // Make sure the configuration names never contain any secrets
+            if (configuration.ParameterKey.includes(variableName)) {
+                throw new Error([
+                    `Secret "${variableName}" found in configuration key "${configuration.ParameterKey}" for artifact "${artifactId}" (v.${artifactVersion})`
+                ].join('\n'));
+            }
+
+            // Remove the secret from the configuration value
+            if (configuration.ParameterValue.includes(variableValue)) {
+                configuration.ParameterValue = configuration.ParameterValue.replaceAll(variableValue, `{{${variableName}}}`);
             }
         }
     }
+
 
     // Sanity check that there is a version
     if (!artifactVersion) throw new Error(`No artifact version found for artifact "${artifactId}" (v.${artifactVersion})`);

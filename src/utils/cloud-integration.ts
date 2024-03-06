@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 import { integrationContent } from "../cpi-odata/IntegrationContent/index.js";
-import { ciEnvironment } from "./cicm-configuration.js";
+import { ciEnvironmentSchema } from "./cicm-configuration.js";
 import { getSecrets, secretsSchema } from "./cicm-secrets.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
-export function buildCPIODataURL({ accountShortName, region, sslHost }: z.infer<typeof ciEnvironment>) {
+export function buildCPIODataURL({ accountShortName, region, sslHost }: z.infer<typeof ciEnvironmentSchema>) {
     return `https://${accountShortName}-tmn.${sslHost}.${region}/api/v1`;
 }
 
@@ -28,7 +28,7 @@ export const integrationArtifactConfigurationSchema = z.object({
     ]),
 });
 
-export async function testCredentials(environment: z.infer<typeof ciEnvironment>, secrets: z.infer<typeof secretsSchema>) {
+export async function testCredentials(environment: z.infer<typeof ciEnvironmentSchema>, secrets: z.infer<typeof secretsSchema>) {
     await integrationPackagesApi.requestBuilder()
         .getAll()
         .execute({
@@ -38,7 +38,7 @@ export async function testCredentials(environment: z.infer<typeof ciEnvironment>
         });
 }
 
-async function getExecutionDestination(environment: z.infer<typeof ciEnvironment>) {
+async function getExecutionDestination(environment: z.infer<typeof ciEnvironmentSchema>) {
     const secrets = await getSecrets();
 
     return {
@@ -48,13 +48,13 @@ async function getExecutionDestination(environment: z.infer<typeof ciEnvironment
     } as const;
 }
 
-export async function getIntegrationPackages(environment: z.infer<typeof ciEnvironment>) {
+export async function getIntegrationPackages(environment: z.infer<typeof ciEnvironmentSchema>) {
     return integrationPackagesApi.requestBuilder()
         .getAll()
         .execute(await getExecutionDestination(environment));
 }
 
-export async function getIntergrationPackageArtifacts(environment: z.infer<typeof ciEnvironment>, integrationPackageId: string) {
+export async function getIntergrationPackageArtifacts(environment: z.infer<typeof ciEnvironmentSchema>, integrationPackageId: string) {
     const response = await integrationPackagesApi.requestBuilder()
         .getByKey(integrationPackageId)
         .appendPath('/IntegrationDesigntimeArtifacts')
@@ -74,7 +74,7 @@ export async function getIntergrationPackageArtifacts(environment: z.infer<typeo
 interface GetIntegrationArtifactConfigurationsOptions {
     artifactId: string;
     artifactVersion: string;
-    environment: z.infer<typeof ciEnvironment>;
+    environment: z.infer<typeof ciEnvironmentSchema>;
     environmentSecrets?: Record<string, string>;
 }
 

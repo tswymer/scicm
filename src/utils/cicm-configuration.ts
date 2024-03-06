@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { join } from 'node:path';
 import { z } from "zod";
 
@@ -23,40 +23,46 @@ export const ciRegions = [
 
 const ciRegion = z.enum(ciRegions);
 
-export const ciEnvironment = z.object({
+export const ciEnvironmentSchema = z.object({
     accountShortName: z.string(),
     sslHost: z.string(),
     region: ciRegion,
 });
 
-export const monitoredIntegrationPackage = z.object({
+export const managedIntegrationPackageSchema = z.object({
     packageId: z.string(),
     ignoredArtifactIds: z.array(z.string()),
 });
 
-const configurationSchema = z.object({
-    environments: z.array(ciEnvironment),
-    monitoredIntegrationPackages: z.array(monitoredIntegrationPackage).optional(),
-    environmentSecrets: z.record(z.string(), z.string()),
+const cicmConfigurationSchema = z.object({
+    integrationEnvironments: z.array(ciEnvironmentSchema),
+    managedIntegrationPackages: z.array(managedIntegrationPackageSchema).optional(),
+    integrationEnvironmentVariables: z.record(z.string(), z.string()),
 });
 
-function getConfigurationFilePath(path: null | string = null) {
-    const cwd = process.cwd();
+export type CICMConfig = {
+    integrationEnvironmentVariables: (accountShortName: string) => Record<string, string>,
+    integrationEnvironments: z.infer<typeof ciEnvironmentSchema>[],
+    managedIntegrationPackages?: z.infer<typeof managedIntegrationPackageSchema>[],
+};
 
-    const filePath = path ? join(cwd, path) : cwd;
-
-    return join(filePath, 'cicm-config.json');
+function getConfigurationFilePath() {
+    return join(process.cwd(), 'cicm-config.json');
 }
 
-export async function getConfig(path: null | string = null) {
+export async function getConfig(accountShortName: string) {
     // Create the path to the configuration file
-    const configurationFilePath = getConfigurationFilePath(path);
+    const configurationFilePath = getConfigurationFilePath();
 
-    // Read the configuration file
-    const configuration = JSON.parse(await readFile(getConfigurationFilePath(path), 'utf8'));
+    // Import the configuration file
+    const configFile = await import(configurationFilePath) as Partial<CICMConfig>;
 
     // Parse the configuration object content
-    const parsedConfiguration = configurationSchema.safeParse(configuration);
+    const parsedConfiguration = cicmConfigurationSchema.safeParse({
+        integrationEnvironments: configFile.integrationEnvironments,
+        integrationEnvironmentVariables: configFile.integrationEnvironmentVariables!(accountShortName),
+        managedIntegrationPackages: configFile.managedIntegrationPackages,
+    } satisfies Partial<z.infer<typeof cicmConfigurationSchema>>);
 
     // Check if the configuration is valid
     if (!parsedConfiguration.success) {
@@ -69,20 +75,41 @@ export async function getConfig(path: null | string = null) {
     return parsedConfiguration.data;
 }
 
-export async function setConfig(configuration: z.infer<typeof configurationSchema>, path: null | string = null) {
+export async function setConfig(configuration: z.infer<typeof cicmConfigurationSchema>) {
     // Create the path to the configuration file
-    const configurationFilePath = getConfigurationFilePath(path);
+    const configurationFilePath = getConfigurationFilePath();
 
     // Sort the lists in the configuration
-    configuration.monitoredIntegrationPackages?.sort((a, b) => a.packageId.localeCompare(b.packageId));
-    configuration.monitoredIntegrationPackages?.forEach(monitoredPackage => monitoredPackage.ignoredArtifactIds.sort());
+    configuration.managedIntegrationPackages?.sort((a, b) => a.packageId.localeCompare(b.packageId));
+    configuration.managedIntegrationPackages?.forEach(monitoredPackage => monitoredPackage.ignoredArtifactIds.sort());
 
     // Write the configuration to the cicm-config.json file
     await writeFile(configurationFilePath, JSON.stringify(configuration, null, 2));
 }
 
-export function getEnvironment(config: z.infer<typeof configurationSchema>, environmentAccountShortName: string) {
-    const environment = config.environments.find(environment => environment.accountShortName === environmentAccountShortName);
+export async function getAllEnvironments() {
+    // Create the path to the configuration file
+    const configurationFilePath = getConfigurationFilePath();
+
+    // Import the configuration file
+    const configFile = await import(configurationFilePath) as Partial<CICMConfig>;
+
+    // Parse the configuration object content
+    const parsedEnvironments = z.array(ciEnvironmentSchema).safeParse(configFile.integrationEnvironments);
+
+    // Check if the configuration is valid
+    if (!parsedEnvironments.success) {
+        throw new Error([
+            `Failed to parse environments from ${configurationFilePath}:`,
+            ...parsedEnvironments.error.errors.map(error => JSON.stringify(error, null, 2)),
+        ].join('\n'));
+    }
+
+    return parsedEnvironments.data;
+}
+
+export function getEnvironment(config: z.infer<typeof cicmConfigurationSchema>, environmentAccountShortName: string) {
+    const environment = config.integrationEnvironments.find(environment => environment.accountShortName === environmentAccountShortName);
     if (!environment) throw new Error(`Environment with accountShortName "${environmentAccountShortName}" not found.`);
 
     return environment;

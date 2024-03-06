@@ -8,7 +8,7 @@ import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
 
 export default class VerifyConfiguration extends Command {
     static args = {
-        environmentAccountShortName: Args.string({ required: true, description: 'The accountShortName to verify configurations for' }),
+        accountShortName: Args.string({ required: true, description: 'The accountShortName to verify configurations for' }),
     }
 
     static flags = {
@@ -16,18 +16,18 @@ export default class VerifyConfiguration extends Command {
     }
 
     async run(): Promise<void> {
-        const { args: { environmentAccountShortName }, flags: { safeUpdate } } = await this.parse(VerifyConfiguration);
+        const { args: { accountShortName }, flags: { safeUpdate } } = await this.parse(VerifyConfiguration);
 
-        const config = await getConfig();
-        const environment = getEnvironment(config, environmentAccountShortName);
+        const config = await getConfig(accountShortName);
+        const environment = getEnvironment(config, accountShortName);
 
         this.log('Verifying Cloud Integration Configurations...');
 
-        for (const monitoredPackage of config.monitoredIntegrationPackages ?? []) {
+        for (const monitoredPackage of config.managedIntegrationPackages ?? []) {
             this.log('');
 
             // Load the packageSecrets from the configuration file
-            const { environmentSecrets } = config;
+            const { integrationEnvironmentVariables: environmentSecrets } = config;
 
             ux.action.start(`Verifying configurations for package "${monitoredPackage.packageId}"...`);
 

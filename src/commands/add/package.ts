@@ -2,19 +2,19 @@ import { checkbox, select } from '@inquirer/prompts';
 import { Command, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
-import { getConfig, setConfig } from '../../utils/cicm-configuration.js';
+import { getAllEnvironments, getConfig, getEnvironment, setConfig } from '../../utils/cicm-configuration.js';
 import { buildCPIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 
 export default class AddPackage extends Command {
     async run(): Promise<void> {
         this.log('Add a new Intergration Package to the Cloud Integration Configuration Manager\n');
 
-        const config = await getConfig();
+        const environments = await getAllEnvironments();
 
         // Select the environment to add the integration package from
         const selectedEnvironment = await select({
             message: 'Select the environment to add the integration package from:',
-            choices: config.environments.map(environment => ({
+            choices: environments.map(environment => ({
                 value: environment.accountShortName,
                 name: `${buildCPIODataURL({
                     accountShortName: environment.accountShortName,
@@ -26,9 +26,8 @@ export default class AddPackage extends Command {
 
         this.log('');
 
-        const environment = config.environments.find(environment => environment.accountShortName === selectedEnvironment);
-
-        if (!environment) this.error(`Environment with account short name "${selectedEnvironment}" not found.`);
+        const config = await getConfig(selectedEnvironment);
+        const environment = getEnvironment(config, selectedEnvironment);
 
         // Get the integration package to add from the user
         ux.action.start('Loading integration packages from SAP CPI...');
@@ -46,7 +45,7 @@ export default class AddPackage extends Command {
         });
 
         // Make sure the package is not already being monitored
-        if (config.monitoredIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === selectedPackageId)) {
+        if (config.managedIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === selectedPackageId)) {
             this.error(`The integration package ${selectedPackageId} is already being monitored.`);
         }
 
@@ -84,8 +83,8 @@ export default class AddPackage extends Command {
         // Update the configuration
         await setConfig({
             ...config,
-            monitoredIntegrationPackages: [
-                ...config.monitoredIntegrationPackages ?? [],
+            managedIntegrationPackages: [
+                ...config.managedIntegrationPackages ?? [],
                 {
                     packageId: selectedPackageId,
                     ignoredArtifactIds: excludedArtifactIds,

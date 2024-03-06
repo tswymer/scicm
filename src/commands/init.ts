@@ -4,7 +4,7 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { ciEnvironment, ciRegions, setConfig } from '../utils/cicm-configuration.js';
+import { ciEnvironmentSchema, ciRegions, setConfig } from '../utils/cicm-configuration.js';
 import { secretsSchema, setSecrets } from '../utils/cicm-secrets.js';
 import { testCredentials } from '../utils/cloud-integration.js';
 
@@ -59,7 +59,7 @@ export default class Init extends Command {
           name: region,
         })),
       })
-    } satisfies z.infer<typeof ciEnvironment>;
+    } satisfies z.infer<typeof ciEnvironmentSchema>;
 
     this.log('');
 
@@ -83,9 +83,9 @@ export default class Init extends Command {
 
     // Write the initial environment to the .cicm.json file
     await setConfig({
-      environments: [initialEnvironment],
-      environmentSecrets: {}
-    }, projectName);
+      integrationEnvironments: [initialEnvironment],
+      integrationEnvironmentVariables: {}
+    });
 
     // Create a .gitignore file to exclude the .env file (secrets)
     const gitIngnoreFilePath = join(projectPath, '.gitignore');

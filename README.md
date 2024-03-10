@@ -41,6 +41,26 @@ npx cicm add package
 
 After selecting the integration package and the containing integration artifacts to monitor, cicm will export the current version of each artifact's version and configuration values to the `./my-cicm-project/configurations/integration-package-name/` folder.
 
-![add integration package diag](./docs/add.excalidraw.svg)
-
 ## Verify Configuration Changes
+
+The current configurations for each managed integration artifact can be verified against the current version of the artifact within SAP Cloud Integration by running the following command:
+
+```bash
+npx cicm verify
+```
+
+When verifying the configuration values for each integration artifact, cicm will compare the current version and configuration values from SAP Cloud Integration with the latest version and configuration values exported locally.
+
+Optionally, a `--safeUpdate` flag can be used to to update the local version and configuration values to match the current version and configuration values from SAP Cloud Integration, as long as the configurations values of the latest local version match the current version and configuration values from SAP Cloud Integration (and are this safe to update).
+![cicm-verify](./docs//verify.excalidraw.svg)
+
+For every configuration key that is verified, cicm will check the following information:
+![cicm-verification-steps](./docs//verification-steps.excalidraw.svg)
+
+## Update Configuration Values
+
+When configuration changes are made in SAP Cloud Integration, the configuration values can be updated locally by running the following command:
+
+```bash
+npx cicm update
+```

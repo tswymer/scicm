@@ -2,6 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from 'node:path';
 import { z } from "zod";
 
+export type CIRegion = typeof ciRegions[number];
+
 export const ciRegions = [
     'ae1.hana.ondemand.com',
     'ap1.hana.ondemand.com',

@@ -1,23 +1,34 @@
 import { input, password, select } from '@inquirer/prompts';
-import { Command, ux } from '@oclif/core';
+import { Command, Flags, ux } from '@oclif/core';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { ciEnvironmentSchema, ciRegions, setConfig } from '../utils/cicm-configuration.js';
+import { CIRegion, ciEnvironmentSchema, ciRegions, setConfig } from '../utils/cicm-configuration.js';
 import { cicmSecretsSchema, setCICMSecrets } from '../utils/cicm-secrets.js';
 import { testCredentials } from '../utils/cloud-integration.js';
 
 export default class Init extends Command {
-  static description = 'Initialize a new Cloud Integration Configuration Manager project.';
+  static description = 'Initialize a new Cloud Integration Configuration Manager (cicm) project.';
+
+  static flags = {
+    projectName: Flags.string({ description: 'name of the cicm project to create.' }),
+    ciUsername: Flags.string({ description: 'username for the CI OData API.' }),
+    ciPassword: Flags.string({ description: 'password for the CI OData API.' }),
+    ciAccountShortName: Flags.string({ description: 'account short name for the CI instance.' }),
+    ciSSLHost: Flags.string({ description: 'SSL host for the CI instance.' }),
+    ciRegion: Flags.string({ description: 'region for the CI instance.' }),
+  };
 
   public async run() {
+    const { flags } = await this.parse(Init)
+
     const cicmVersion = JSON.parse(await readFile(join(import.meta.url.replace('file:', ''), '..', '..', 'package.json'), 'utf8')).version;
     if (!cicmVersion) this.error('Failed to get the current version of cicm.');
 
     this.log('Welcome to the SAP Cloud Integration Configuration Manager (cicm) setup!\n');
 
-    const projectName = await input({ message: 'Project Name:', default: 'my-cicm-project' });
+    const projectName = flags.projectName ?? await input({ message: 'Project Name:', default: 'my-cicm-project' });
 
     // Check if there is already a project (folder) with the same name
     const projectPath = join(process.cwd(), projectName);
@@ -30,8 +41,8 @@ export default class Init extends Command {
     // Gather the secrets from the user
     this.log('\n(OAuth later on, Basic auth for now).');
     const cicmSecrets = {
-      'CI_USERNAME': await input({ message: 'CI OData API Username:' }),
-      'CI_PASSWORD': await password({ message: 'CI OData API Password:' }),
+      'CI_USERNAME': flags.ciUsername ?? await input({ message: 'CI OData API Username:' }),
+      'CI_PASSWORD': flags.ciPassword ?? await password({ message: 'CI OData API Password:' }),
     } satisfies z.infer<typeof cicmSecretsSchema>;
 
     this.log('');
@@ -50,9 +61,9 @@ export default class Init extends Command {
     this.log('your CI instance URL would be "https://l123456-tmn.hci.eu1.hana.ondemand.com".\n');
 
     const initialEnvironment = {
-      accountShortName: await input({ message: 'CI Account Short Name:' }),
-      sslHost: await input({ message: 'CI SSL Host:' }),
-      region: await select({
+      accountShortName: flags.ciAccountShortName ?? await input({ message: 'CI Account Short Name:' }),
+      sslHost: flags.ciSSLHost ?? await input({ message: 'CI SSL Host:' }),
+      region: (flags.ciRegion as CIRegion) ?? await select({
         message: 'CI Region:',
         choices: ciRegions.map(region => ({
           value: region,

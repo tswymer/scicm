@@ -18,7 +18,7 @@ To create a new Cloud Integration Configuration Management (cicm) project, run t
 npx cicm init
 ```
 
-After completing the setup wizard, the following files and folders will be created:
+After completing the setup wizard for a project named `my-cicm-project`, the following files and folders will be created:
 
 - `./my-cicm-project/` - cicm project folder
 - `./my-cicm-project/cicm-config.json` - cicm configuration file

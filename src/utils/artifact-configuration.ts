@@ -1,8 +1,8 @@
-import { getNewestLocalArtifactConfigurations } from "./artifact-management.js";
+import { getLatestLocalArtifactConfigurations } from "./artifact-management.js";
 import { getIntegrationArtifactConfigurations } from "./cloud-integration.js";
 
 type ArtifactConfigurations = {
-    localConfigurations: Awaited<ReturnType<typeof getNewestLocalArtifactConfigurations>>;
+    localConfigurations: Awaited<ReturnType<typeof getLatestLocalArtifactConfigurations>>;
     remoteConfigurations: Awaited<ReturnType<typeof getIntegrationArtifactConfigurations>>;
 };
 

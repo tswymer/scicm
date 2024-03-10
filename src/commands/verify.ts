@@ -1,7 +1,7 @@
 import { Args, Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
-import { getNewestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
+import { getLatestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
 import { getConfig, getEnvironment } from '../utils/cicm-configuration.js';
 import { getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
@@ -41,7 +41,7 @@ export default class VerifyConfiguration extends Command {
                 if (monitoredPackage.ignoredArtifactIds.includes(packageArtifact.Id)) continue;
 
                 // Get the local and remote configurtions for this artifact
-                const newestLocalConfigurations = await getNewestLocalArtifactConfigurations(monitoredPackage.packageId, packageArtifact.Id);
+                const latestLocalConfigurations = await getLatestLocalArtifactConfigurations(monitoredPackage.packageId, packageArtifact.Id);
                 const remoteConfigurations = await getIntegrationArtifactConfigurations({
                     environment,
                     artifactId: packageArtifact.Id,
@@ -50,10 +50,10 @@ export default class VerifyConfiguration extends Command {
                 });
 
                 // Check if the remote artifact version is identical to the local artifact configuration version
-                const configurationHasIdenticalVersion = packageArtifact.Version === newestLocalConfigurations.artifactVersion;
+                const configurationHasIdenticalVersion = packageArtifact.Version === latestLocalConfigurations.artifactVersion;
                 if (!configurationHasIdenticalVersion && !safeUpdate) {
                     this.error(new Error([
-                        `🚨 Remote artifact version "${packageArtifact.Version}" for artifact "${packageArtifact.Id}" does not match latest local configuration version "${newestLocalConfigurations.artifactVersion}"!`,
+                        `🚨 Remote artifact version "${packageArtifact.Version}" for artifact "${packageArtifact.Id}" does not match latest local configuration version "${latestLocalConfigurations.artifactVersion}"!`,
                         'Please run the "update:package" command to update the local configuration.'
                     ].join('\n')));
                 }
@@ -61,7 +61,7 @@ export default class VerifyConfiguration extends Command {
                 // Compare the local and remote configurations
                 this.log(`Verifying ${remoteConfigurations.configurations.length}\tconfiguration(s) for artifact "${packageArtifact.Id}"...`);
                 const configurationComparison = compareArtifactConfigurations({
-                    localConfigurations: newestLocalConfigurations,
+                    localConfigurations: latestLocalConfigurations,
                     remoteConfigurations,
                 });
 

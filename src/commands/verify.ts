@@ -9,11 +9,13 @@ import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
 
 export default class VerifyConfiguration extends Command {
     static args = {
-        accountShortName: Args.string({ required: true, description: 'The accountShortName to verify configurations for' }),
+        accountShortName: Args.string({ required: true, description: 'the accountShortName to verify configurations for' }),
     }
 
+    static description = 'Verfify the artifact configurations for a Cloud Integration environment.';
+
     static flags = {
-        safeUpdate: Flags.boolean({ description: 'Update the local configuration versions if their configurations are unchanged' }),
+        safeUpdate: Flags.boolean({ description: 'Update the local artifact configuration versions, as long as their configurations are unchanged' }),
     }
 
     async run(): Promise<void> {
@@ -24,24 +26,27 @@ export default class VerifyConfiguration extends Command {
 
         this.log('Verifying Cloud Integration Configurations...');
 
-        for (const monitoredPackage of config.managedIntegrationPackages ?? []) {
+        for (const { packageId, ignoredArtifactIds } of config.managedIntegrationPackages ?? []) {
             this.log('');
 
             // Load the packageSecrets from the configuration file
             const artifactVariables = await getArtifactVariables(accountShortName);
 
-            ux.action.start(`Verifying configurations for package "${monitoredPackage.packageId}"...`);
+            ux.action.start(`Verifying configurations for package "${packageId}"...`);
 
-            const packageArtifacts = await getIntergrationPackageArtifacts(environment, monitoredPackage.packageId);
+            const packageArtifacts = await getIntergrationPackageArtifacts(environment, packageId);
 
             let comparisonCounter = 0;
             const warnings: string[] = [];
             for (const packageArtifact of packageArtifacts) {
                 // Check if the artifact is ignored in the configuration
-                if (monitoredPackage.ignoredArtifactIds.includes(packageArtifact.Id)) continue;
+                if (ignoredArtifactIds.includes(packageArtifact.Id)) continue;
 
                 // Get the local and remote configurtions for this artifact
-                const latestLocalConfigurations = await getLatestLocalArtifactConfigurations(monitoredPackage.packageId, packageArtifact.Id);
+                const localConfigurations = await getLatestLocalArtifactConfigurations({
+                    packageId,
+                    artifactId: packageArtifact.Id,
+                });
                 const remoteConfigurations = await getIntegrationArtifactConfigurations({
                     environment,
                     artifactId: packageArtifact.Id,
@@ -50,10 +55,10 @@ export default class VerifyConfiguration extends Command {
                 });
 
                 // Check if the remote artifact version is identical to the local artifact configuration version
-                const configurationHasIdenticalVersion = packageArtifact.Version === latestLocalConfigurations.artifactVersion;
+                const configurationHasIdenticalVersion = packageArtifact.Version === localConfigurations.artifactVersion;
                 if (!configurationHasIdenticalVersion && !safeUpdate) {
                     this.error(new Error([
-                        `🚨 Remote artifact version "${packageArtifact.Version}" for artifact "${packageArtifact.Id}" does not match latest local configuration version "${latestLocalConfigurations.artifactVersion}"!`,
+                        `🚨 Remote artifact version "${packageArtifact.Version}" for artifact "${packageArtifact.Id}" does not match latest local configuration version "${localConfigurations.artifactVersion}"!`,
                         'Please run the "update:package" command to update the local configuration.'
                     ].join('\n')));
                 }
@@ -61,7 +66,7 @@ export default class VerifyConfiguration extends Command {
                 // Compare the local and remote configurations
                 this.log(`Verifying ${remoteConfigurations.configurations.length}\tconfiguration(s) for artifact "${packageArtifact.Id}"...`);
                 const configurationComparison = compareArtifactConfigurations({
-                    localConfigurations: latestLocalConfigurations,
+                    localConfigurations,
                     remoteConfigurations,
                 });
 
@@ -69,7 +74,7 @@ export default class VerifyConfiguration extends Command {
                 switch (configurationComparison.result) {
                     case 'NO_LOCAL_ARTIFACT_VERSION': {
                         return this.error(new Error([
-                            `🚨 No local configurations found for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) from package "${monitoredPackage.packageId}".`,
+                            `🚨 No local configurations found for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) from package "${packageId}".`,
                             'Please run the "add:package" command to add the artifact to the configuration.'
                         ].join('\n')));
                     }
@@ -112,7 +117,12 @@ export default class VerifyConfiguration extends Command {
                 // If the remote configuration version is newer than the local configuration version, push the new version to the local configuration
                 if (!configurationHasIdenticalVersion && safeUpdate) {
                     // Update the local configuration version to the remote configuration version
-                    await pushConfigurationVersion(monitoredPackage.packageId, packageArtifact.Id, packageArtifact.Version, remoteConfigurations.configurations);
+                    await pushConfigurationVersion({
+                        packageId,
+                        artifactId: packageArtifact.Id,
+                        artifactVersion: packageArtifact.Version,
+                        configurations: remoteConfigurations.configurations,
+                    });
                     this.log(`⬆️ Safely updated local configuration version for artifact "${packageArtifact.Id}" to (v.${packageArtifact.Version})!`);
                 }
 

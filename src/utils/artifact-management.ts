@@ -33,19 +33,24 @@ export async function createManagedArtifact(packageId: string, artifactConfigura
     await writeFile(artifactConfigurationFilePath, JSON.stringify(artifactConfiguration, null, 2));
 }
 
+interface ArtifactIdentifier {
+    artifactId: string;
+    packageId: string;
+}
+
 /**
  * Builds the path to a managed artifact configuration file.
  */
-function getManagedArtifactFilePath(packageId: string, artifactId: string) {
+function getManagedArtifactFilePath({ artifactId, packageId }: ArtifactIdentifier) {
     return join(process.cwd(), 'configuration', packageId, `${artifactId}.json`);
 }
 
 /**
  * Retrieve a managed artifact configuration.
  */
-export async function getManagedArtifact(packageId: string, artifactId: string) {
+export async function getManagedArtifact({ artifactId, packageId }: ArtifactIdentifier) {
     // Get the artifact configuration
-    const artifactConfigurationFilePath = getManagedArtifactFilePath(packageId, artifactId);
+    const artifactConfigurationFilePath = getManagedArtifactFilePath({ artifactId, packageId });
     if (!await access(artifactConfigurationFilePath).then(() => true).catch(() => false)) {
         throw new Error(`Artifact configuration "${artifactConfigurationFilePath}" does not exist.`);
     }
@@ -53,12 +58,17 @@ export async function getManagedArtifact(packageId: string, artifactId: string) 
     return managedArtifactSchema.parse(JSON.parse(await readFile(artifactConfigurationFilePath, 'utf8')));
 }
 
+interface UpdateConfigurationVersionParams extends ArtifactIdentifier {
+    artifactVersion: string;
+    configurations: z.infer<typeof integrationArtifactConfigurationSchema>[];
+}
+
 /**
  * Update an existing local artifact configuration version.
  */
-export async function updateConfigurationVersion(packageId: string, artifactId: string, artifactVersion: string, configurations: z.infer<typeof integrationArtifactConfigurationSchema>[]) {
+export async function overwriteExistingConfigurationVersion({ artifactId, artifactVersion, configurations, packageId }: UpdateConfigurationVersionParams) {
     // Get the artifact configuration
-    const localArtifactConfiguration = await getManagedArtifact(packageId, artifactId);
+    const localArtifactConfiguration = await getManagedArtifact({ packageId, artifactId });
 
     // Get the existing configuration
     const existingConfigurations = localArtifactConfiguration.artifactConfigurations.filter(config => config.artifactVersion === artifactVersion);
@@ -74,16 +84,21 @@ export async function updateConfigurationVersion(packageId: string, artifactId: 
     localArtifactConfiguration.artifactConfigurations[existingConfigurationIndex].configurations = configurations;
 
     // Write the updated configuration
-    const artifactConfigurationFilePath = getManagedArtifactFilePath(packageId, artifactId);
+    const artifactConfigurationFilePath = getManagedArtifactFilePath({ packageId, artifactId });
     await writeFile(artifactConfigurationFilePath, JSON.stringify(localArtifactConfiguration, null, 2));
+}
+
+interface PushConfigurationVersionParams extends ArtifactIdentifier {
+    artifactVersion: string;
+    configurations: z.infer<typeof integrationArtifactConfigurationSchema>[];
 }
 
 /**
  * Add a new artifact configuration version.
  */
-export async function pushConfigurationVersion(packageId: string, artifactId: string, artifactVersion: string, configurations: z.infer<typeof integrationArtifactConfigurationSchema>[]) {
+export async function pushConfigurationVersion({ artifactId, artifactVersion, configurations, packageId }: PushConfigurationVersionParams) {
     // Get the artifact configuration
-    const localArtifactConfiguration = await getManagedArtifact(packageId, artifactId);
+    const localArtifactConfiguration = await getManagedArtifact({ packageId, artifactId });
 
     // Add the new configuration
     localArtifactConfiguration.artifactConfigurations.push({
@@ -93,12 +108,17 @@ export async function pushConfigurationVersion(packageId: string, artifactId: st
     });
 
     // Write the updated configuration
-    const artifactConfigurationFilePath = getManagedArtifactFilePath(packageId, artifactId);
+    const artifactConfigurationFilePath = getManagedArtifactFilePath({ packageId, artifactId });
     await writeFile(artifactConfigurationFilePath, JSON.stringify(localArtifactConfiguration, null, 2));
 }
 
-export async function getLatestLocalArtifactConfigurations(packageId: string, artifactId: string) {
-    const artifactConfiguration = await getManagedArtifact(packageId, artifactId);
+interface GetLatestLocalArtifactConfigurationsParams {
+    artifactId: string;
+    packageId: string;
+}
+
+export async function getLatestLocalArtifactConfigurations({ artifactId, packageId }: GetLatestLocalArtifactConfigurationsParams) {
+    const artifactConfiguration = await getManagedArtifact({ packageId, artifactId });
 
     // Sort the artifact configurations by version
     artifactConfiguration.artifactConfigurations.sort((a, b) => a.artifactVersion.localeCompare(b.artifactVersion));

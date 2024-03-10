@@ -4,7 +4,7 @@ import { Command, ux } from '@oclif/core';
 import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getArtifactVariables } from '../../utils/artifact-variables.js';
 import { getConfig, getEnvironment, setConfig } from '../../utils/cicm-configuration.js';
-import { buildCPIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
+import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 
 export default class AddPackage extends Command {
     async run(): Promise<void> {
@@ -17,7 +17,7 @@ export default class AddPackage extends Command {
             message: 'Select the environment to add the integration package from:',
             choices: integrationEnvironments.map(environment => ({
                 value: environment.accountShortName,
-                name: `${buildCPIODataURL({
+                name: `${buildCIODataURL({
                     accountShortName: environment.accountShortName,
                     region: environment.region,
                     sslHost: environment.sslHost,
@@ -32,7 +32,7 @@ export default class AddPackage extends Command {
         const artifactVariables = await getArtifactVariables(environment.accountShortName);
 
         // Get the integration package to add from the user
-        ux.action.start('Loading integration packages from SAP CPI...');
+        ux.action.start('Loading integration packages from SAP CI...');
         const integrationPackages = await getIntegrationPackages(environment);
         ux.action.stop();
 

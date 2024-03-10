@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { z } from "zod";
 
 export const cicmSecretsSchema = z.object({
-    CPI_USERNAME: z.string(),
-    CPI_PASSWORD: z.string(),
+    CI_USERNAME: z.string(),
+    CI_PASSWORD: z.string(),
 });
 
 function getEnvFilePath(path: null | string = null) {

@@ -30,28 +30,28 @@ export default class Init extends Command {
     // Gather the secrets from the user
     this.log('\n(OAuth later on, Basic auth for now).');
     const cicmSecrets = {
-      'CPI_USERNAME': await input({ message: 'CPI OData API Username:' }),
-      'CPI_PASSWORD': await password({ message: 'CPI OData API Password:' }),
+      'CI_USERNAME': await input({ message: 'CI OData API Username:' }),
+      'CI_PASSWORD': await password({ message: 'CI OData API Password:' }),
     } satisfies z.infer<typeof cicmSecretsSchema>;
 
     this.log('');
 
     // Gather the initial environment details from the user
-    this.log('Provide the environment details for the first CPI instance to monitor.');
+    this.log('Provide the environment details for the first CI instance to monitor.');
     this.log('You can add more instances after the setup is complete.\n');
 
-    this.log('When entering the CPI instance URL, please follow this format:');
+    this.log('When entering the CI instance URL, please follow this format:');
     this.log('https://{Account Short Name}-tmn.{SSL Host}.{Region}.hana.ondemand.com/api/v1');
     this.log('Where:');
     this.log('- {Account Short Name} is your specific account identifier.');
     this.log('- {SSL Host} typically represents the SSL certificate name or a service identifier.');
-    this.log('- {Region} is the data center region where your CPI instance is hosted, such as eu1, us1, ap1, etc.');
+    this.log('- {Region} is the data center region where your CI instance is hosted, such as eu1, us1, ap1, etc.');
     this.log('For example, if your account short name is "l123456", your SSL host is "hci", and your instance is hosted in the "eu1" region,');
-    this.log('your CPI instance URL would be "https://l123456-tmn.hci.eu1.hana.ondemand.com".\n');
+    this.log('your CI instance URL would be "https://l123456-tmn.hci.eu1.hana.ondemand.com".\n');
 
     const initialEnvironment = {
-      accountShortName: await input({ message: 'CPI Account Short Name:' }),
-      sslHost: await input({ message: 'CPI SSL Host:' }),
+      accountShortName: await input({ message: 'CI Account Short Name:' }),
+      sslHost: await input({ message: 'CI SSL Host:' }),
       region: await select({
         message: 'CI Region:',
         choices: ciRegions.map(region => ({
@@ -63,7 +63,7 @@ export default class Init extends Command {
 
     this.log('');
 
-    // Check the connection to the CPI instance
+    // Check the connection to the CI instance
     ux.action.start('Checking connection...');
     try {
       await testCredentials(initialEnvironment, cicmSecrets);
@@ -73,7 +73,7 @@ export default class Init extends Command {
 
       if (!(error instanceof Error)) this.error(new Error('Unknown error: ' + String(error)));
 
-      this.logToStderr('Failed to connect to the SAP CPI instance with the provided credentials:');
+      this.logToStderr('Failed to connect to the SAP CI instance with the provided credentials:');
       this.error(error);
     }
 

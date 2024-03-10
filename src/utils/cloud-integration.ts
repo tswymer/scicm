@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-import { integrationContent } from "../cpi-odata/IntegrationContent/index.js";
+import { integrationContent } from "../ci-odata/IntegrationContent/index.js";
 import { ciEnvironmentSchema } from "./cicm-configuration.js";
 import { cicmSecretsSchema, getCICMSecrets } from "./cicm-secrets.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
-export function buildCPIODataURL({ accountShortName, region, sslHost }: z.infer<typeof ciEnvironmentSchema>) {
+export function buildCIODataURL({ accountShortName, region, sslHost }: z.infer<typeof ciEnvironmentSchema>) {
     return `https://${accountShortName}-tmn.${sslHost}.${region}/api/v1`;
 }
 
@@ -32,9 +32,9 @@ export async function testCredentials(environment: z.infer<typeof ciEnvironmentS
     await integrationPackagesApi.requestBuilder()
         .getAll()
         .execute({
-            url: buildCPIODataURL(environment),
-            username: cicmSecrets.CPI_USERNAME,
-            password: cicmSecrets.CPI_PASSWORD,
+            url: buildCIODataURL(environment),
+            username: cicmSecrets.CI_USERNAME,
+            password: cicmSecrets.CI_PASSWORD,
         });
 }
 
@@ -42,9 +42,9 @@ async function getExecutionDestination(environment: z.infer<typeof ciEnvironment
     const cicmSecrets = await getCICMSecrets();
 
     return {
-        url: buildCPIODataURL(environment),
-        username: cicmSecrets.CPI_USERNAME,
-        password: cicmSecrets.CPI_PASSWORD,
+        url: buildCIODataURL(environment),
+        username: cicmSecrets.CI_USERNAME,
+        password: cicmSecrets.CI_PASSWORD,
     } as const;
 }
 
@@ -66,7 +66,7 @@ export async function getIntergrationPackageArtifacts(environment: z.infer<typeo
 
     const results = response?.data?.d?.results;
 
-    if (!results || !Array.isArray(results)) throw new Error('Invalid /IntegrationDesigntimeArtifacts response from CPI');
+    if (!results || !Array.isArray(results)) throw new Error('Invalid /IntegrationDesigntimeArtifacts response from CI');
 
     return z.array(integrationArtifactSchema).parse(results);
 }
@@ -88,7 +88,7 @@ export async function getIntegrationArtifactConfigurations({ environment, artifa
     // Because this is a sub-path, we have to parse the response ourselves
     if (response.status !== 200) throw new Error(`Failed to get integration designtime artifact configurations: ${response.status} - ${response.statusText}`);
     const results = z.array(integrationArtifactConfigurationSchema).parse(response?.data?.d?.results);
-    if (!results || !Array.isArray(results)) throw new Error('Invalid /Configurations response from CPI');
+    if (!results || !Array.isArray(results)) throw new Error('Invalid /Configurations response from CI');
 
     // Remove the environment secrets from the configurations
 

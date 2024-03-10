@@ -100,10 +100,11 @@ export default class Init extends Command {
     // Create a .gitignore file to exclude the .env file (secrets)
     const gitIngnoreFilePath = join(projectPath, '.gitignore');
     await writeFile(gitIngnoreFilePath, '.env');
-    this.log(`✅ Updated ${gitIngnoreFilePath} to exclude .env`);
+    this.log(`✅ Created ${gitIngnoreFilePath} to exclude .env`);
 
     // Write the secrets to the .env file
-    await setCICMSecrets(this, cicmSecrets, projectName);
+    await setCICMSecrets(cicmSecrets, projectName);
+    this.log(`✅ Created ${join(projectPath, '.env')} with secrets`);
 
     // Create the package.json file
     const packageJsonFilePath = join(projectPath, 'package.json');
@@ -120,6 +121,22 @@ export default class Init extends Command {
       }
     }, null, 2));
 
+    // Create the "artifact-variables.js" file
+    await writeFile(join(projectPath, 'artifact-variables.js'), ARTIFACT_VARIABLES_TEMPLATE, 'utf8');
+    this.log(`✅ Created ${join(projectPath, 'artifact-variables.js')}`);
+
+    // @TODO: npm install for the user
+
     ux.action.stop(`🎉 Project successfully created!`);
   }
 }
+
+const ARTIFACT_VARIABLES_TEMPLATE = `/** @type {import('cicm/utils/artifact-variables').GetArtifactVariables} */
+export function getArtifactVariables(accountShortName) {
+  console.log('Creating artifact variables for:', accountShortName)
+
+  return {
+    MY_VARIABLE_KEY: 'MY_VARIABLE_VALUE',
+  }
+}
+`;

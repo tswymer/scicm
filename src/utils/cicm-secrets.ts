@@ -1,4 +1,3 @@
-import { Command } from "@oclif/core";
 import { parse } from 'dotenv';
 import { access, appendFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -42,7 +41,7 @@ export async function getCICMSecrets(path: null | string = null) {
     return parsedSecrets.data;
 }
 
-export async function setCICMSecrets(command: Command, secrets: z.infer<typeof cicmSecretsSchema>, path: null | string = null) {
+export async function setCICMSecrets(secrets: z.infer<typeof cicmSecretsSchema>, path: null | string = null) {
     // Create the file path to the .env file
     const envFilePath = getEnvFilePath(path);
 
@@ -58,6 +57,4 @@ export async function setCICMSecrets(command: Command, secrets: z.infer<typeof c
 
     // Write the secrets to the .env file
     await appendFile(envFilePath, Object.entries(secrets).map(([key, value]) => `${key}="${value}"`).join('\n'));
-
-    command.log(`✅ Updated ${envFilePath} with secrets`);
 }

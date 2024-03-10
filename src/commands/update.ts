@@ -1,33 +1,86 @@
-import { Args, Command, Flags } from '@oclif/core';
+import { select } from '@inquirer/prompts';
+import { Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, overwriteExistingConfigurationVersion, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
 import { getConfig, getEnvironment } from '../utils/cicm-configuration.js';
-import { getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
+import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
 
 export default class UpdateConfiguration extends Command {
-    static args = {
-        accountShortName: Args.string({ required: true, description: 'the accountShortName to verify configurations for' }),
-        packageId: Args.string({ required: true, description: 'the integration packageId of the artifact to update.' }),
-        artifactId: Args.string({ required: true, description: 'the artifactId of the artifact to update.' }),
-    }
-
     static flags = {
+        accountShortName: Flags.string({ description: 'the accountShortName to verify configurations for' }),
+        packageId: Flags.string({ description: 'the integration packageId of the artifact to update.' }),
+        artifactId: Flags.string({ description: 'the artifactId of the artifact to update.' }),
         force: Flags.boolean({ char: 'f', description: 'force the update of the artifact configuration.' }),
     }
 
     async run(): Promise<void> {
-        const { args: { accountShortName, artifactId, packageId }, flags } = await this.parse(UpdateConfiguration);
+        const { flags } = await this.parse(UpdateConfiguration);
 
         const config = await getConfig();
+
+        // Get the accountShortName to update the configurations from
+        const accountShortName = flags.accountShortName ?? await select({
+            message: 'Select the environment to add the integration package from:',
+            choices: config.integrationEnvironments.map(environment => ({
+                value: environment.accountShortName,
+                name: `${buildCIODataURL({
+                    accountShortName: environment.accountShortName,
+                    region: environment.region,
+                    sslHost: environment.sslHost,
+                })}`,
+            })),
+        });
+
         const environment = getEnvironment(config, accountShortName);
         const artifactVariables = await getArtifactVariables(accountShortName);
 
-        this.log(`Updating local artifact configurations for artifact "${artifactId}" from package "${packageId}"...`);
+        // Get the integration package to add from the user
+        ux.action.start('Loading integration packages from SAP CI...');
+        const integrationPackages = await getIntegrationPackages(environment);
+        ux.action.stop();
 
-        // Get the package artifacts
+        // Get the package to update the configurations from
+        const packageId = flags.packageId ?? await select({
+            message: 'Select an Intergration Package to start managing configuration for:',
+            choices: integrationPackages.map(pkg => ({
+                value: pkg.id,
+                name: `[${pkg.id}]:\t${pkg.name ?? '_Unnamed_Package_'}`,
+            })),
+        });
+
+        // Get the artifact to update the configurations for
+        ux.action.start(`Loading integration artifacts for package "${packageId}" from SAP CI...`);
         const remoteArtifacts = await getIntergrationPackageArtifacts(environment, packageId);
+        ux.action.stop();
+
+        // Get the artifact to update the configurations for
+        const managedIntegrationArtifact = config.managedIntegrationPackages?.find(monitoredPackage => monitoredPackage.packageId === packageId);
+        if (!managedIntegrationArtifact) this.error([
+            `The integration package ${packageId} is not being monitored.`,
+            `Run "npx cicm add package --accountShortName=${accountShortName} --packageId=${packageId}" to start monitoring it.`,
+        ].join('\n'));
+
+        // Remove the ignored artifacts from the artifacts list
+        const monitoredArtifacts = remoteArtifacts.filter(remoteArtifact => !managedIntegrationArtifact.ignoredArtifactIds.includes(remoteArtifact.Id));
+
+        // Get the artifact to update the configurations for
+        const artifactId = flags.artifactId ?? await select({
+            message: 'Select an Intergration Artifact to update configurations for:',
+            choices: monitoredArtifacts.map(artifact => ({
+                value: artifact.Id,
+                name: `[${artifact.Id}]:\t${artifact.Name ?? '_Unnamed_Artifact_'}`,
+            })),
+        });
+
+        // Double check that the artifact id is being monitored
+        if (!monitoredArtifacts.some(monitoredArtifacts => monitoredArtifacts.Id === artifactId)) {
+            this.error([
+                `The artifact "${artifactId}" is not being monitored in the package "${packageId}".`,
+                `Run "npx cicm add package --accountShortName=${accountShortName} --packageId ${packageId}" to start monitoring it.`,
+            ].join('\n'));
+        }
 
         // Find the remote artifact
         const remoteArtifact = remoteArtifacts.find(artifact => artifact.Id === artifactId);
@@ -47,6 +100,15 @@ export default class UpdateConfiguration extends Command {
 
         // If the remote version doesn't exist locally yet, update it and we are done
         if (!remoteVersionExistsLocally) {
+            // Check if the remote version is newer than the local one
+            if (localConfigurations.artifactVersion > remoteArtifact.Version) {
+                this.error([
+                    `🚨 The newest local artifact configuration for "${artifactId}" (v.${localConfigurations.artifactVersion}) is newer than the remote one (v.${remoteArtifact.Version}).`,
+                    `This probably happened because a remote integration artifact was reverted to a previous version.`,
+                    `Please remove the newer local configurations and run the command again to update the configurations.`,
+                ].join('\n'));
+            }
+
             await pushConfigurationVersion({
                 packageId,
                 artifactId,

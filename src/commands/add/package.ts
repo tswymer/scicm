@@ -1,5 +1,5 @@
 import { checkbox, select } from '@inquirer/prompts';
-import { Command, ux } from '@oclif/core';
+import { Command, Flags, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getArtifactVariables } from '../../utils/artifact-variables.js';
@@ -7,13 +7,20 @@ import { getConfig, getEnvironment, setConfig } from '../../utils/cicm-configura
 import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 
 export default class AddPackage extends Command {
+    static flags = {
+        accountShortName: Flags.string({ description: 'the accountShortName to verify configurations for' }),
+        packageId: Flags.string({ description: 'the id of the integration package to add.' }),
+    }
+
     async run(): Promise<void> {
+        const { flags } = await this.parse(AddPackage);
+
         this.log('Add a new Intergration Package to the Cloud Integration Configuration Manager\n');
 
         const { integrationEnvironments } = await getConfig();
 
         // Select the environment to add the integration package from
-        const selectedEnvironment = await select({
+        const accountShortName = flags.accountShortName ?? await select({
             message: 'Select the environment to add the integration package from:',
             choices: integrationEnvironments.map(environment => ({
                 value: environment.accountShortName,
@@ -28,7 +35,7 @@ export default class AddPackage extends Command {
         this.log('');
 
         const config = await getConfig();
-        const environment = getEnvironment(config, selectedEnvironment);
+        const environment = getEnvironment(config, accountShortName);
         const artifactVariables = await getArtifactVariables(environment.accountShortName);
 
         // Get the integration package to add from the user
@@ -38,7 +45,7 @@ export default class AddPackage extends Command {
 
         this.log('');
 
-        const selectedPackageId = await select({
+        const selectedPackageId = flags.packageId ?? await select({
             message: 'Select an Intergration Package to start managing configuration for:',
             choices: integrationPackages.map(pkg => ({
                 value: pkg.id,
@@ -82,7 +89,7 @@ export default class AddPackage extends Command {
             .filter(artifact => !selectedIntegrationArtifacts.includes(artifact.Id))
             .map(artifact => artifact.Id);
 
-        // Update the configuration
+        // Update the configuration with the new managed integration package
         await setConfig({
             ...config,
             managedIntegrationPackages: [

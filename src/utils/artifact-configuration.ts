@@ -8,12 +8,12 @@ type ArtifactConfigurations = {
 
 type CompareArtifactConfigurationResponse =
     | { comparisonCount: number, result: 'OK', unusedLocalConfigurationKeys: string[] }
-    | { configurationKey: string, localValue: string, remoteValue: string, result: "LOCAL_CONFIGURATION_MISMATCH" | "LOCAL_CONFIGURATION_MISSING" }
-    | { result: "NO_LOCAL_ARTIFACT_VERSION" };
+    | { configurationKey: string, localValue: string, remoteValue: string, result: "LOCAL_CONFIGURATION_MISMATCH" | "LOCAL_CONFIGURATION_MISSING" };
 
 export function compareArtifactConfigurations({ localConfigurations, remoteConfigurations: remoteConfigurationsWithVersion }: ArtifactConfigurations): CompareArtifactConfigurationResponse {
-    // Get the configurations from the remote artifact
-    const { configurations: remoteConfigurations } = remoteConfigurationsWithVersion;
+
+    // Get the configurations from the remote artifact, as a copy because we will be modifying it
+    const remoteConfigurations = [...remoteConfigurationsWithVersion.configurations];
 
     // For every local configuration, compare it the remote configuration
     let comparisonCount = 0;

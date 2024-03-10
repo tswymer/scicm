@@ -1,27 +1,39 @@
-import { Args, Command, Flags, ux } from '@oclif/core';
+import { select } from '@inquirer/prompts';
+import { Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
 import { getConfig, getEnvironment } from '../utils/cicm-configuration.js';
-import { getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
+import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
 import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
 
 export default class VerifyConfiguration extends Command {
-    static args = {
-        accountShortName: Args.string({ required: true, description: 'the accountShortName to verify configurations for' }),
-    }
-
     static description = 'Verfify the artifact configurations for a Cloud Integration environment.';
 
     static flags = {
+        accountShortName: Flags.string({ description: 'the accountShortName to verify configurations for' }),
         safeUpdate: Flags.boolean({ description: 'Update the local artifact configuration versions, as long as their configurations are unchanged' }),
     }
 
     async run(): Promise<void> {
-        const { args: { accountShortName }, flags: { safeUpdate } } = await this.parse(VerifyConfiguration);
+        const { flags } = await this.parse(VerifyConfiguration);
 
         const config = await getConfig();
+
+        // Get the accountShortName to update the configurations from
+        const accountShortName = flags.accountShortName ?? await select({
+            message: 'Select the environment to add the integration package from:',
+            choices: config.integrationEnvironments.map(environment => ({
+                value: environment.accountShortName,
+                name: `${buildCIODataURL({
+                    accountShortName: environment.accountShortName,
+                    region: environment.region,
+                    sslHost: environment.sslHost,
+                })}`,
+            })),
+        });
+
         const environment = getEnvironment(config, accountShortName);
 
         this.log('Verifying Cloud Integration Configurations...');
@@ -55,11 +67,14 @@ export default class VerifyConfiguration extends Command {
                 });
 
                 // Check if the remote artifact version is identical to the local artifact configuration version
-                const configurationHasIdenticalVersion = packageArtifact.Version === localConfigurations.artifactVersion;
-                if (!configurationHasIdenticalVersion && !safeUpdate) {
+                const isLocalConfigurationUpToDate = localConfigurations.artifactVersion === packageArtifact.Version;
+                if (!isLocalConfigurationUpToDate && !flags.safeUpdate) {
                     this.error(new Error([
                         `🚨 Remote artifact version "${packageArtifact.Version}" for artifact "${packageArtifact.Id}" does not match latest local configuration version "${localConfigurations.artifactVersion}"!`,
-                        'Please run the "update:package" command to update the local configuration.'
+                        'Run the following command to update the local configurations to the newest version:',
+                        `npx cicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                        'Alternatively, run this command with the "--safeUpdate" flag to update the local configuration versions, as long as their configurations are unchanged:',
+                        `npx cicm verify --accountShortName=${accountShortName} --safeUpdate`,
                     ].join('\n')));
                 }
 
@@ -72,39 +87,29 @@ export default class VerifyConfiguration extends Command {
 
                 // Handle the comparison result
                 switch (configurationComparison.result) {
-                    case 'NO_LOCAL_ARTIFACT_VERSION': {
-                        return this.error(new Error([
-                            `🚨 No local configurations found for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) from package "${packageId}".`,
-                            'Please run the "add:package" command to add the artifact to the configuration.'
-                        ].join('\n')));
-                    }
-
+                    case 'LOCAL_CONFIGURATION_MISSING':
                     case 'LOCAL_CONFIGURATION_MISMATCH': {
                         const { localValue, remoteValue, configurationKey } = configurationComparison;
 
-                        if (configurationHasIdenticalVersion) {
+                        if (isLocalConfigurationUpToDate) {
                             return this.error(new Error([
-                                `🚨 Local configuration key "${configurationKey}" from artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) has a different value than the remote configuration value!:`,
+                                `🚨 Failed to verify configurations for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}): ${configurationComparison.result}`,
+                                `The local configuration key "${configurationKey}" has a different value than the remote configuration value:`,
                                 `Local Value:\t${localValue}`,
                                 `Remote Value:\t${remoteValue}`,
-                                `If you are sure the remote configuration is correct, please run the "update:package -f" command to update the local configuration.`
+                                'If you are sure the remote configuration is correct, you can force-update the local configuration with:',
+                                `npx cicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
                             ].join('\n')),)
                         }
 
                         return this.error(new Error([
-                            `🚨 Local configuration for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) is out of date!`,
-                            `Remote configuration now has been updated with new configurations (v${packageArtifact.Version}).`,
-                            'Please run the "update:package" command to update the local configuration.'
-                        ].join('\n')),)
-                    }
+                            `🚨 Failed to verify configurations for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}): ${configurationComparison.result}`,
+                            `The local configuration for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) is out of date!`,
+                            `The remote artifact is now updated with new different configurations on (v${packageArtifact.Version}).`,
+                            'Run the following command to update the local configurations to the newest version:',
+                            `npx cicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                        ].join('\n')));
 
-                    case 'LOCAL_CONFIGURATION_MISSING': {
-                        const { localValue, remoteValue, configurationKey } = configurationComparison;
-                        return this.error(new Error([
-                            `🚨 Remote configuration key "${configurationKey}" from artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) not present in the local configuration!:`,
-                            `Local Value:\t${localValue}`,
-                            `Remote Value:\t${remoteValue}`,
-                        ].join('\n')))
                     }
 
                     case 'OK': { break; }
@@ -115,15 +120,25 @@ export default class VerifyConfiguration extends Command {
                 console.assert(configurationComparison.result === 'OK');
 
                 // If the remote configuration version is newer than the local configuration version, push the new version to the local configuration
-                if (!configurationHasIdenticalVersion && safeUpdate) {
+                if (!isLocalConfigurationUpToDate && flags.safeUpdate) {
+                    if (localConfigurations.artifactVersion >= packageArtifact.Version) {
+                        this.error(new Error([
+                            `Failed to safely update local configurations for artifact "${packageArtifact.Id}"!`,
+                            `The local configurations (v.${localConfigurations.artifactVersion}) is already newer than the remote configurations (v.${remoteConfigurations.artifactVersion}).`,
+                            'If you are sure the remote configuration is correct, you can force-update the local configuration with:\n',
+                            `npx cicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                        ].join('\n')));
+                    }
+
+                    this.log(`Local configurations for artifact "${packageArtifact.Id}" are out of date!`);
                     // Update the local configuration version to the remote configuration version
                     await pushConfigurationVersion({
                         packageId,
                         artifactId: packageArtifact.Id,
-                        artifactVersion: packageArtifact.Version,
+                        artifactVersion: remoteConfigurations.artifactVersion,
                         configurations: remoteConfigurations.configurations,
                     });
-                    this.log(`⬆️ Safely updated local configuration version for artifact "${packageArtifact.Id}" to (v.${packageArtifact.Version})!`);
+                    this.log(`Safely updated local configuration version for artifact "${packageArtifact.Id}" from (v.${localConfigurations.artifactVersion}) to (v.${remoteConfigurations.artifactVersion})!\n`);
                 }
 
                 // If there are any warning, remember them for later

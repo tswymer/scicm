@@ -7,6 +7,8 @@ import { getConfig, getEnvironment, setConfig } from '../../utils/cicm-configura
 import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 
 export default class AddPackage extends Command {
+    static description = 'Add an integration package to your Cloud Integration Configuration Manager (cicm) project.';
+
     static flags = {
         accountShortName: Flags.string({ description: 'the accountShortName to verify configurations for' }),
         packageId: Flags.string({ description: 'the id of the integration package to add.' }),

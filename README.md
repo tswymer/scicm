@@ -1,10 +1,10 @@
-# (SAP) Cloud Integration Configuration Manager - cicm
+# SAP Cloud Integration Configuration Manager - scicm
 
 Manage SAP Cloud Integration artifact configuration values with Git. Verify artifact configuration changes within SAP Cloud Integration to confidently deploy.
 
 ## Prerequisites & Installation
 
-cicm requires the following prerequisites to be installed:
+scicm requires the following prerequisites to be installed:
 
 - [Node.js](https://nodejs.org/en/download/) & [npm](https://www.npmjs.com/get-npm)
 
@@ -12,55 +12,55 @@ cicm requires the following prerequisites to be installed:
 
 ## Initial Setup
 
-To create a new Cloud Integration Configuration Management (cicm) project, run the following command to run the setup wizard and create a new project folder with the necessary configuration:
+To create a new Cloud Integration Configuration Management (scicm) project, run the following command to run the setup wizard and create a new project folder with the necessary configuration:
 
 ```bash
-npx cicm init
+npx scicm init
 ```
 
-After completing the setup wizard for a project named `my-cicm-project`, the following files and folders will be created:
+After completing the setup wizard for a project named `my-scicm-project`, the following files and folders will be created:
 
-- `./my-cicm-project/` - cicm project folder
-- `./my-cicm-project/cicm-config.json` - cicm configuration file
-- `./my-cicm-project/artifact-variables.js` - artifact variables file
-- `./my-cicm-project/.env` - environment variables file
+- `./my-scicm-project/` - scicm project folder
+- `./my-scicm-project/scicm-config.json` - scicm configuration file
+- `./my-scicm-project/artifact-variables.js` - artifact variables file
+- `./my-scicm-project/.env` - environment variables file
 
 Some additional housekeeping files will also be created:
 
-- `./my-cicm-project/package.json` - npm package file
-- `./my-cicm-project/package-lock.json` - npm package lock file
-- `./my-cicm-project/.gitignore` - git ignore file
+- `./my-scicm-project/package.json` - npm package file
+- `./my-scicm-project/package-lock.json` - npm package lock file
+- `./my-scicm-project/.gitignore` - git ignore file
 
 ## Add an Integration Package
 
-To start monitoring the configuration values for integration artifacts withing an integration package, run the following command to run the setup wizard and add a new integration package to your cicm project:
+To start monitoring the configuration values for integration artifacts withing an integration package, run the following command to run the setup wizard and add a new integration package to your scicm project:
 
 ```bash
-npx cicm add package
+npx scicm add package
 ```
 
-After selecting the integration package and the containing integration artifacts to monitor, cicm will export the current version of each artifact's version and configuration values to the `./my-cicm-project/configurations/integration-package-name/` folder.
+After selecting the integration package and the containing integration artifacts to monitor, scicm will export the current version of each artifact's version and configuration values to the `./my-scicm-project/configurations/integration-package-name/` folder.
 
 ## Verify Configuration Changes
 
 The current configurations for each managed integration artifact can be verified against the current version of the artifact within SAP Cloud Integration by running the following command:
 
 ```bash
-npx cicm verify
+npx scicm verify
 ```
 
-When verifying the configuration values for each integration artifact, cicm will compare the current version and configuration values from SAP Cloud Integration with the latest version and configuration values exported locally.
+When verifying the configuration values for each integration artifact, scicm will compare the current version and configuration values from SAP Cloud Integration with the latest version and configuration values exported locally.
 
 Optionally, a `--safeUpdate` flag can be used to to update the local version and configuration values to match the current version and configuration values from SAP Cloud Integration, as long as the configurations values of the latest local version match the current version and configuration values from SAP Cloud Integration (and are this safe to update).
-![cicm-verify](./docs//verify.excalidraw.svg)
+![scicm-verify](./docs//verify.excalidraw.svg)
 
-For every configuration key that is verified, cicm will check the following information:
-![cicm-verification-steps](./docs//verification-steps.excalidraw.svg)
+For every configuration key that is verified, scicm will check the following information:
+![scicm-verification-steps](./docs//verification-steps.excalidraw.svg)
 
 ## Update Configuration Values
 
 When configuration changes are made in SAP Cloud Integration, the configuration values can be updated locally by running the following command:
 
 ```bash
-npx cicm update
+npx scicm update
 ```

@@ -3,7 +3,7 @@ import { access, appendFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 
-export const cicmSecretsSchema = z.object({
+export const scicmSecretsSchema = z.object({
     CI_USERNAME: z.string(),
     CI_PASSWORD: z.string(),
 });
@@ -17,7 +17,7 @@ function getEnvFilePath(path: null | string = null) {
     return join(filePath, '.env');
 }
 
-export async function getCICMSecrets(path: null | string = null) {
+export async function getSCICMSecrets(path: null | string = null) {
     // Create the file path to the .env file
     const envFilePath = getEnvFilePath(path);
 
@@ -28,7 +28,7 @@ export async function getCICMSecrets(path: null | string = null) {
     const secrets = parse(env);
 
     // Parse the secrets object
-    const parsedSecrets = cicmSecretsSchema.safeParse(secrets);
+    const parsedSecrets = scicmSecretsSchema.safeParse(secrets);
 
     // Check if the secrets are valid
     if (!parsedSecrets.success) {
@@ -41,7 +41,7 @@ export async function getCICMSecrets(path: null | string = null) {
     return parsedSecrets.data;
 }
 
-export async function setCICMSecrets(secrets: z.infer<typeof cicmSecretsSchema>, path: null | string = null) {
+export async function setSCICMSecrets(secrets: z.infer<typeof scicmSecretsSchema>, path: null | string = null) {
     // Create the file path to the .env file
     const envFilePath = getEnvFilePath(path);
 

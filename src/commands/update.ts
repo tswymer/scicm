@@ -4,8 +4,8 @@ import { Command, Flags, ux } from '@oclif/core';
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, overwriteExistingConfigurationVersion, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
-import { getConfig, getEnvironment } from '../utils/cicm-configuration.js';
 import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
+import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 
 export default class UpdateConfiguration extends Command {
     static flags = {
@@ -59,7 +59,7 @@ export default class UpdateConfiguration extends Command {
         const managedIntegrationArtifact = config.managedIntegrationPackages?.find(monitoredPackage => monitoredPackage.packageId === packageId);
         if (!managedIntegrationArtifact) this.error([
             `The integration package ${packageId} is not being monitored.`,
-            `Run "npx cicm add package --accountShortName=${accountShortName} --packageId=${packageId}" to start monitoring it.`,
+            `Run "npx scicm add package --accountShortName=${accountShortName} --packageId=${packageId}" to start monitoring it.`,
         ].join('\n'));
 
         // Remove the ignored artifacts from the artifacts list
@@ -78,7 +78,7 @@ export default class UpdateConfiguration extends Command {
         if (!monitoredArtifacts.some(monitoredArtifacts => monitoredArtifacts.Id === artifactId)) {
             this.error([
                 `The artifact "${artifactId}" is not being monitored in the package "${packageId}".`,
-                `Run "npx cicm add package --accountShortName=${accountShortName} --packageId ${packageId}" to start monitoring it.`,
+                `Run "npx scicm add package --accountShortName=${accountShortName} --packageId ${packageId}" to start monitoring it.`,
             ].join('\n'));
         }
 
@@ -142,7 +142,7 @@ export default class UpdateConfiguration extends Command {
                 this.error([
                     `🚨 The local artifact configuration for "${artifactId}" is not safe to update, as it's local configuration differs from the remote one, even though their version (v.${remoteArtifact.Version})is the same. (${configurationComparison.result})`,
                     `Run the command with the --force flag to update the local configuration:`,
-                    `npx cicm update ${accountShortName} ${packageId} ${artifactId} --force`,
+                    `npx scicm update ${accountShortName} ${packageId} ${artifactId} --force`,
                 ].join('\n'));
             }
 

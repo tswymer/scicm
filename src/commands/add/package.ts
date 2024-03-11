@@ -3,7 +3,7 @@ import { Command, Flags, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getArtifactVariables } from '../../utils/artifact-variables.js';
-import { getConfig, getEnvironment, setConfig } from '../../utils/cicm-configuration.js';
+import { getConfig, getEnvironment, setConfig } from '../../utils/scicm-configuration.js';
 import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 
 export default class AddPackage extends Command {

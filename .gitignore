@@ -9,5 +9,5 @@ oclif.manifest.json
 .env
 
 # Local Testing
-my-cicm-project
+my-scicm-project
 artifact-variables_test.js

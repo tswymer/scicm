@@ -1,9 +1,9 @@
 {
-  "name": "cicm",
+  "name": "scicm",
   "version": "0.0.1",
   "description": "SAP Cloud (Platform) Integration Configuration Manager CLI",
   "keywords": [
-    "cicm",
+    "scicm",
     "sap",
     "cloud",
     "platform",
@@ -14,7 +14,7 @@
   "exports": "./lib/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "cicm": "./bin/run.js"
+    "scicm": "./bin/run.js"
   },
   "files": [
     "/bin",
@@ -32,9 +32,9 @@
     "prepare": "npm run build"
   },
   "oclif": {
-    "bin": "cicm",
+    "bin": "scicm",
     "commands": "./dist/commands",
-    "dirname": "cicm",
+    "dirname": "scicm",
     "plugins": [
       "@oclif/plugin-help"
     ],

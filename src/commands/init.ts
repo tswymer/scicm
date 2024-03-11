@@ -4,15 +4,15 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { CIRegion, ciEnvironmentSchema, ciRegions, setConfig } from '../utils/cicm-configuration.js';
-import { cicmSecretsSchema, setCICMSecrets } from '../utils/cicm-secrets.js';
 import { testCredentials } from '../utils/cloud-integration.js';
+import { CIRegion, ciEnvironmentSchema, ciRegions, setConfig } from '../utils/scicm-configuration.js';
+import { scicmSecretsSchema, setSCICMSecrets } from '../utils/scicm-secrets.js';
 
 export default class Init extends Command {
-  static description = 'Initialize a new Cloud Integration Configuration Manager (cicm) project.';
+  static description = 'Initialize a new SAP Cloud Integration Configuration Manager (scicm) project.';
 
   static flags = {
-    projectName: Flags.string({ description: 'name of the cicm project to create.' }),
+    projectName: Flags.string({ description: 'name of the scicm project to create.' }),
     ciUsername: Flags.string({ description: 'username for the CI OData API.' }),
     ciPassword: Flags.string({ description: 'password for the CI OData API.' }),
     ciAccountShortName: Flags.string({ description: 'account short name for the CI instance.' }),
@@ -23,12 +23,12 @@ export default class Init extends Command {
   public async run() {
     const { flags } = await this.parse(Init)
 
-    const cicmVersion = JSON.parse(await readFile(join(import.meta.url.replace('file:', ''), '..', '..', 'package.json'), 'utf8')).version;
-    if (!cicmVersion) this.error('Failed to get the current version of cicm.');
+    const scicmVersion = JSON.parse(await readFile(join(import.meta.url.replace('file:', ''), '..', '..', 'package.json'), 'utf8')).version;
+    if (!scicmVersion) this.error('Failed to get the current version of scicm.');
 
-    this.log('Welcome to the SAP Cloud Integration Configuration Manager (cicm) setup!\n');
+    this.log('Welcome to the SAP Cloud Integration Configuration Manager (scicm) setup!\n');
 
-    const projectName = flags.projectName ?? await input({ message: 'Project Name:', default: 'my-cicm-project' });
+    const projectName = flags.projectName ?? await input({ message: 'Project Name:', default: 'my-scicm-project' });
 
     // Check if there is already a project (folder) with the same name
     const projectPath = join(process.cwd(), projectName);
@@ -40,10 +40,10 @@ export default class Init extends Command {
 
     // Gather the secrets from the user
     this.log('\n(OAuth later on, Basic auth for now).');
-    const cicmSecrets = {
+    const scicmSecrets = {
       'CI_USERNAME': flags.ciUsername ?? await input({ message: 'CI OData API Username:' }),
       'CI_PASSWORD': flags.ciPassword ?? await password({ message: 'CI OData API Password:' }),
-    } satisfies z.infer<typeof cicmSecretsSchema>;
+    } satisfies z.infer<typeof scicmSecretsSchema>;
 
     this.log('');
 
@@ -77,7 +77,7 @@ export default class Init extends Command {
     // Check the connection to the CI instance
     ux.action.start('Checking connection...');
     try {
-      await testCredentials(initialEnvironment, cicmSecrets);
+      await testCredentials(initialEnvironment, scicmSecrets);
       ux.action.stop('Connection successful! 🌎\n');
     } catch (error) {
       ux.action.stop('Connection failed! ❌');
@@ -92,7 +92,7 @@ export default class Init extends Command {
     ux.action.start(`Creating "${projectName}"...`);
     await mkdir(projectPath);
 
-    // Write the initial environment to the .cicm.json file
+    // Write the initial environment file
     await setConfig({
       integrationEnvironments: [initialEnvironment],
     }, projectPath);
@@ -103,7 +103,7 @@ export default class Init extends Command {
     this.log(`✅ Created ${gitIngnoreFilePath} to exclude .env`);
 
     // Write the secrets to the .env file
-    await setCICMSecrets(cicmSecrets, projectName);
+    await setSCICMSecrets(scicmSecrets, projectName);
     this.log(`✅ Created ${join(projectPath, '.env')} with secrets`);
 
     // Create the package.json file
@@ -117,7 +117,7 @@ export default class Init extends Command {
         "verify": "node ../bin/run.js verify",
       },
       dependencies: {
-        'cicm': `^${cicmVersion}`,
+        'scicm': `^${scicmVersion}`,
       }
     }, null, 2));
 
@@ -131,7 +131,7 @@ export default class Init extends Command {
   }
 }
 
-const ARTIFACT_VARIABLES_TEMPLATE = `/** @type {import('cicm/utils/artifact-variables').GetArtifactVariables} */
+const ARTIFACT_VARIABLES_TEMPLATE = `/** @type {import('scicm/utils/artifact-variables').GetArtifactVariables} */
 export function getArtifactVariables(accountShortName) {
   console.log('Creating artifact variables for:', accountShortName)
 

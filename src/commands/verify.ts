@@ -4,7 +4,7 @@ import { Command, Flags, ux } from '@oclif/core';
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
-import { getConfig, getEnvironment } from '../utils/cicm-configuration.js';
+import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
 import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
 

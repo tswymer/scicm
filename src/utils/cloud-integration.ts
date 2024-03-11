@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 import { integrationContent } from "../ci-odata/IntegrationContent/index.js";
-import { ciEnvironmentSchema } from "./cicm-configuration.js";
-import { cicmSecretsSchema, getCICMSecrets } from "./cicm-secrets.js";
+import { ciEnvironmentSchema } from "./scicm-configuration.js";
+import { getSCICMSecrets, scicmSecretsSchema } from "./scicm-secrets.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
@@ -28,23 +28,23 @@ export const integrationArtifactConfigurationSchema = z.object({
     ]),
 });
 
-export async function testCredentials(environment: z.infer<typeof ciEnvironmentSchema>, cicmSecrets: z.infer<typeof cicmSecretsSchema>) {
+export async function testCredentials(environment: z.infer<typeof ciEnvironmentSchema>, scicmSecrets: z.infer<typeof scicmSecretsSchema>) {
     await integrationPackagesApi.requestBuilder()
         .getAll()
         .execute({
             url: buildCIODataURL(environment),
-            username: cicmSecrets.CI_USERNAME,
-            password: cicmSecrets.CI_PASSWORD,
+            username: scicmSecrets.CI_USERNAME,
+            password: scicmSecrets.CI_PASSWORD,
         });
 }
 
 async function getExecutionDestination(environment: z.infer<typeof ciEnvironmentSchema>) {
-    const cicmSecrets = await getCICMSecrets();
+    const scicmSecrets = await getSCICMSecrets();
 
     return {
         url: buildCIODataURL(environment),
-        username: cicmSecrets.CI_USERNAME,
-        password: cicmSecrets.CI_PASSWORD,
+        username: scicmSecrets.CI_USERNAME,
+        password: scicmSecrets.CI_PASSWORD,
     } as const;
 }
 

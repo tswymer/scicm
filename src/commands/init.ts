@@ -1,5 +1,6 @@
 import { input, password, select } from '@inquirer/prompts';
 import { Command, Flags, ux } from '@oclif/core';
+import { exec } from 'node:child_process';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
@@ -113,8 +114,9 @@ export default class Init extends Command {
       description: 'SAP Cloud Integration Configuration Manager',
       type: 'module',
       scripts: {
-        "add-package": "node ../bin/run.js add package",
-        "verify": "node ../bin/run.js verify",
+        "add-package": "npx scicm add package",
+        "verify": "npx scicm verify",
+        "update": "npx scicm update",
       },
       dependencies: {
         'scicm': `^${scicmVersion}`,
@@ -125,9 +127,23 @@ export default class Init extends Command {
     await writeFile(join(projectPath, 'artifact-variables.js'), ARTIFACT_VARIABLES_TEMPLATE, 'utf8');
     this.log(`✅ Created ${join(projectPath, 'artifact-variables.js')}`);
 
-    // @TODO: npm install for the user
+    ux.action.stop(`Project successfully created!`);
 
-    ux.action.stop(`🎉 Project successfully created!`);
+    ux.action.start('Installing dependencies...');
+
+    // Install the dependencies for the user
+    await new Promise<void>((resolve, reject) => {
+      exec('npm install', { cwd: projectPath }, (error, stdout, stderr) => {
+        if (error) reject(error);
+        if (stderr) this.logToStderr(stderr);
+        if (stdout) this.log(stdout);
+        resolve();
+      });
+    });
+
+    ux.action.stop('Dependencies installed!');
+
+    this.log(`\nYour project is now set up and ready to use!`);
   }
 }
 

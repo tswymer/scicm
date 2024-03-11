@@ -21,10 +21,17 @@ export default class VerifyConfiguration extends Command {
 
         const config = await getConfig();
 
-        const accountShortName = await selectAccountShortName({
+        const accountShortNameResult = await selectAccountShortName({
             config,
             defaultAccountShortName: flags.accountShortName,
         });
+
+        if (accountShortNameResult.result === 'NOT_MONITORED') this.error([
+            `The accountShortName "${flags.accountShortName}" is not monitored in the configuration file.`
+        ].join('\n'));
+
+        console.assert(accountShortNameResult.result === 'OK');
+        const { accountShortName } = accountShortNameResult;
 
         const environment = getEnvironment(config, accountShortName);
 

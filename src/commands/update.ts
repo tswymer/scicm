@@ -20,10 +20,17 @@ export default class UpdateConfiguration extends Command {
         const config = await getConfig();
 
         // Get the accountShortName from the user
-        const accountShortName = await selectAccountShortName({
+        const accountShortNameResult = await selectAccountShortName({
             config,
             defaultAccountShortName: flags.accountShortName,
         });
+
+        if (accountShortNameResult.result === 'NOT_MONITORED') this.error([
+            `The accountShortName "${flags.accountShortName}" is not monitored in the configuration file.`
+        ].join('\n'));
+
+        console.assert(accountShortNameResult.result === 'OK');
+        const { accountShortName } = accountShortNameResult;
 
         const environment = getEnvironment(config, accountShortName);
         const artifactVariables = await getArtifactVariables(accountShortName);
@@ -34,11 +41,18 @@ export default class UpdateConfiguration extends Command {
         ux.action.stop();
 
         // Get the integration package to update from the user
-        const managedIntegrationPackage = await selectManagedIntegrationPackage({
+        const managedIntegrationPackageResult = await selectManagedIntegrationPackage({
             config,
             defaultPackageId: flags.packageId,
             integrationPackages,
         });
+
+        if (managedIntegrationPackageResult.result === 'NOT_MONITORED') this.error([
+            `The packageId "${flags.packageId}" is not monitored in the configuration file.`
+        ].join('\n'));
+
+        console.assert(managedIntegrationPackageResult.result === 'OK');
+        const { managedIntegrationPackage } = managedIntegrationPackageResult;
 
         // Get the artifact to update the configurations for
         ux.action.start(`Loading integration artifacts for package "${managedIntegrationPackage.packageId}" from SAP CI...`);
@@ -46,11 +60,22 @@ export default class UpdateConfiguration extends Command {
         ux.action.stop();
 
         // Get the artifact to update the configurations for
-        const remoteArtifact = await selectRemoteIntegrationArtifact({
+        const remoteArtifactResult = await selectRemoteIntegrationArtifact({
             remoteArtifacts,
             managedIntegrationPackage,
             defaultArtifactId: flags.artifactId,
         });
+
+        if (remoteArtifactResult.result === 'UNKNOWN_ARTIFACT_ID') this.error([
+            `The artifactId "${flags.artifactId}" does not exist in the integration package "${managedIntegrationPackage.packageId}".`
+        ].join('\n'));
+        if (remoteArtifactResult.result === 'NOT_MONITORED') this.error([
+            `The artifactId "${flags.artifactId}" is not currently monitored by this scicm project.`,
+            'Run the following command start monitoring the artifact configurations:',
+        ].join('\n'));
+
+        console.assert(remoteArtifactResult.result === 'OK');
+        const { remoteArtifact } = remoteArtifactResult;
 
         // Get the local and remote configurtions for this artifact
         const latestLocalConfigurations = await getLatestLocalArtifactConfigurations({

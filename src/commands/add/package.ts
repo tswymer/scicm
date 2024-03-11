@@ -22,10 +22,17 @@ export default class AddPackage extends Command {
 
         const config = await getConfig();
 
-        const accountShortName = await selectAccountShortName({
+        const accountShortNameResult = await selectAccountShortName({
             config,
             defaultAccountShortName: flags.accountShortName,
         });
+
+        if (accountShortNameResult.result === 'NOT_MONITORED') this.error([
+            `The accountShortName "${flags.accountShortName}" is not monitored in the configuration file.`
+        ].join('\n'));
+
+        console.assert(accountShortNameResult.result === 'OK');
+        const { accountShortName } = accountShortNameResult;
 
         this.log('');
 
@@ -39,11 +46,18 @@ export default class AddPackage extends Command {
 
         this.log('');
 
-        const managedIntegrationPackage = await selectManagedIntegrationPackage({
+        const managedIntegrationPackageResult = await selectManagedIntegrationPackage({
             config,
             defaultPackageId: flags.packageId,
             integrationPackages,
         });
+
+        if (managedIntegrationPackageResult.result === 'NOT_MONITORED') this.error([
+            `The packageId "${flags.packageId}" is not monitored in the configuration file.`
+        ].join('\n'));
+
+        console.assert(managedIntegrationPackageResult.result === 'OK');
+        const { managedIntegrationPackage } = managedIntegrationPackageResult;
 
         // Make sure the package is not already being monitored
         if (config.managedIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === managedIntegrationPackage.packageId)) {

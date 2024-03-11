@@ -1,14 +1,22 @@
 import { select } from "@inquirer/prompts";
+import { z } from "zod";
 
 import { buildCIODataURL, getIntegrationPackages, getIntergrationPackageArtifacts } from "./cloud-integration.js";
-import { SCICMConfig } from "./scicm-configuration.js";
+import { SCICMConfig, managedIntegrationPackageSchema } from "./scicm-configuration.js";
 
-interface SelectAccountShortNameParams {
+type SelectAccountShortNameParams = {
     config: SCICMConfig;
     defaultAccountShortName?: string;
 }
 
-export async function selectAccountShortName({ config, defaultAccountShortName }: SelectAccountShortNameParams) {
+type SelectAccountShortNameResponse = {
+    accountShortName: string;
+    result: 'OK';
+} | {
+    result: 'NOT_MONITORED';
+};
+
+export async function selectAccountShortName({ config, defaultAccountShortName }: SelectAccountShortNameParams): Promise<SelectAccountShortNameResponse> {
     const accountShortName = defaultAccountShortName ?? await select({
         message: 'Select an integration environment:',
         choices: config.integrationEnvironments.map(environment => ({
@@ -21,22 +29,30 @@ export async function selectAccountShortName({ config, defaultAccountShortName }
         })),
     });
 
-    if (!config.integrationEnvironments.some(environment => environment.accountShortName === accountShortName)) {
-        throw new Error([
-            `The account short name "${accountShortName}" is not monitored by scicm.`
-        ].join('\n'));
+    if (!config.integrationEnvironments.some(environment => environment.accountShortName === accountShortName)) return {
+        result: 'NOT_MONITORED',
     }
 
-    return accountShortName;
+    return {
+        result: 'OK',
+        accountShortName,
+    }
 }
 
-interface SelectManagedIntegrationPackageParams {
+type SelectManagedIntegrationPackageParams = {
     config: SCICMConfig;
     defaultPackageId?: string;
     integrationPackages: Awaited<ReturnType<typeof getIntegrationPackages>>;
 }
 
-export async function selectManagedIntegrationPackage({ config, defaultPackageId, integrationPackages }: SelectManagedIntegrationPackageParams) {
+type SelectManagedIntegrationPackageResponse = {
+    managedIntegrationPackage: z.infer<typeof managedIntegrationPackageSchema>;
+    result: 'OK';
+} | {
+    result: 'NOT_MONITORED';
+};
+
+export async function selectManagedIntegrationPackage({ config, defaultPackageId, integrationPackages }: SelectManagedIntegrationPackageParams): Promise<SelectManagedIntegrationPackageResponse> {
     const packageId = defaultPackageId ?? await select({
         message: 'Select an integration package:',
         choices: integrationPackages.map(pkg => ({
@@ -46,20 +62,32 @@ export async function selectManagedIntegrationPackage({ config, defaultPackageId
     });
 
     const managedIntegrationPackage = config.managedIntegrationPackages?.find(monitoredPackage => monitoredPackage.packageId === packageId);
-    if (!managedIntegrationPackage) throw new Error([
-        `The integration package ${packageId} is not being monitored.`
-    ].join('\n'));
+    if (!managedIntegrationPackage) return {
+        result: 'NOT_MONITORED',
+    }
 
-    return managedIntegrationPackage;
+    return {
+        result: 'OK',
+        managedIntegrationPackage,
+    };
 }
 
-interface SelectIntegrationArtifactIdParams {
+type SelectIntegrationArtifactIdParams = {
     defaultArtifactId?: string;
-    managedIntegrationPackage: Awaited<ReturnType<typeof selectManagedIntegrationPackage>>;
+    managedIntegrationPackage: z.infer<typeof managedIntegrationPackageSchema>;
     remoteArtifacts: Awaited<ReturnType<typeof getIntergrationPackageArtifacts>>;
 }
 
-export async function selectRemoteIntegrationArtifact({ defaultArtifactId, managedIntegrationPackage, remoteArtifacts }: SelectIntegrationArtifactIdParams) {
+type SelectIntegrationArtifactIdResponse = {
+    remoteArtifact: Awaited<ReturnType<typeof getIntergrationPackageArtifacts>>[number];
+    result: 'OK';
+} | {
+    result: 'NOT_MONITORED';
+} | {
+    result: 'UNKNOWN_ARTIFACT_ID';
+};
+
+export async function selectRemoteIntegrationArtifact({ defaultArtifactId, managedIntegrationPackage, remoteArtifacts }: SelectIntegrationArtifactIdParams): Promise<SelectIntegrationArtifactIdResponse> {
     // Remove the ignored artifacts from the artifacts list
     const monitoredArtifacts = remoteArtifacts.filter(remoteArtifact => !managedIntegrationPackage.ignoredArtifactIds.includes(remoteArtifact.Id));
 
@@ -71,15 +99,18 @@ export async function selectRemoteIntegrationArtifact({ defaultArtifactId, manag
         })),
     });
 
-    if (!monitoredArtifacts.some(monitoredArtifacts => monitoredArtifacts.Id === artifactId)) {
-        throw new Error([
-            `The artifact "${artifactId}" is not being monitored in the package "${managedIntegrationPackage.packageId}".`,
-        ].join('\n'));
+    if (!monitoredArtifacts.some(monitoredArtifacts => monitoredArtifacts.Id === artifactId)) return {
+        result: 'NOT_MONITORED',
     }
 
     // Find the remote artifact
     const remoteArtifact = remoteArtifacts.find(artifact => artifact.Id === artifactId);
-    if (!remoteArtifact) throw new Error(`🚨 Artifact "${artifactId}" does not exist in the package "${managedIntegrationPackage.packageId}"!`);
+    if (!remoteArtifact) return {
+        result: 'UNKNOWN_ARTIFACT_ID'
+    };
 
-    return remoteArtifact;
+    return {
+        result: 'OK',
+        remoteArtifact,
+    };
 }

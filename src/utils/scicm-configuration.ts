@@ -36,12 +36,12 @@ export const managedIntegrationPackageSchema = z.object({
     ignoredArtifactIds: z.array(z.string()),
 });
 
-const cicmConfigurationSchema = z.object({
+const scicmConfigurationSchema = z.object({
     integrationEnvironments: z.array(ciEnvironmentSchema),
     managedIntegrationPackages: z.array(managedIntegrationPackageSchema).optional(),
 });
 
-export type CICMConfig = {
+export type SCICMConfig = {
     integrationEnvironments: z.infer<typeof ciEnvironmentSchema>[],
     managedIntegrationPackages?: z.infer<typeof managedIntegrationPackageSchema>[],
 };
@@ -58,7 +58,7 @@ export async function getConfig() {
     const configuration = JSON.parse(await readFile(configurationFilePath, 'utf8'));
 
     // Parse the configuration object content
-    const parsedConfiguration = cicmConfigurationSchema.safeParse(configuration);
+    const parsedConfiguration = scicmConfigurationSchema.safeParse(configuration);
 
     // Check if the configuration is valid
     if (!parsedConfiguration.success) {
@@ -71,7 +71,7 @@ export async function getConfig() {
     return parsedConfiguration.data;
 }
 
-export async function setConfig(configuration: z.infer<typeof cicmConfigurationSchema>, projectPath: string | undefined = undefined) {
+export async function setConfig(configuration: z.infer<typeof scicmConfigurationSchema>, projectPath: string | undefined = undefined) {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath(projectPath);
 
@@ -79,11 +79,11 @@ export async function setConfig(configuration: z.infer<typeof cicmConfigurationS
     configuration.managedIntegrationPackages?.sort((a, b) => a.packageId.localeCompare(b.packageId));
     configuration.managedIntegrationPackages?.forEach(monitoredPackage => monitoredPackage.ignoredArtifactIds.sort());
 
-    // Write the configuration to the cicm-config.json file
+    // Write the configuration to the scicm-config.json file
     await writeFile(configurationFilePath, JSON.stringify(configuration, null, 2));
 }
 
-export function getEnvironment(config: z.infer<typeof cicmConfigurationSchema>, environmentAccountShortName: string) {
+export function getEnvironment(config: z.infer<typeof scicmConfigurationSchema>, environmentAccountShortName: string) {
     const environment = config.integrationEnvironments.find(environment => environment.accountShortName === environmentAccountShortName);
     if (!environment) throw new Error(`Environment with accountShortName "${environmentAccountShortName}" not found.`);
 

@@ -51,16 +51,16 @@ export default class UpdateConfiguration extends Command {
         });
 
         // Get the artifact to update the configurations for
-        ux.action.start(`Loading integration artifacts for package "${packageId}" from SAP CI...`);
-        const remoteArtifacts = await getIntergrationPackageArtifacts(environment, packageId);
-        ux.action.stop();
-
-        // Get the artifact to update the configurations for
         const managedIntegrationArtifact = config.managedIntegrationPackages?.find(monitoredPackage => monitoredPackage.packageId === packageId);
         if (!managedIntegrationArtifact) this.error([
             `The integration package ${packageId} is not being monitored.`,
             `Run "npx scicm add package --accountShortName=${accountShortName} --packageId=${packageId}" to start monitoring it.`,
         ].join('\n'));
+
+        // Get the artifact to update the configurations for
+        ux.action.start(`Loading integration artifacts for package "${packageId}" from SAP CI...`);
+        const remoteArtifacts = await getIntergrationPackageArtifacts(environment, packageId);
+        ux.action.stop();
 
         // Remove the ignored artifacts from the artifacts list
         const monitoredArtifacts = remoteArtifacts.filter(remoteArtifact => !managedIntegrationArtifact.ignoredArtifactIds.includes(remoteArtifact.Id));

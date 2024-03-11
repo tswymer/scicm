@@ -72,9 +72,9 @@ export default class VerifyConfiguration extends Command {
                     this.error(new Error([
                         `🚨 Remote artifact version "${packageArtifact.Version}" for artifact "${packageArtifact.Id}" does not match latest local configuration version "${localConfigurations.artifactVersion}"!`,
                         'Run the following command to update the local configurations to the newest version:',
-                        `npx cicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                        `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
                         'Alternatively, run this command with the "--safeUpdate" flag to update the local configuration versions, as long as their configurations are unchanged:',
-                        `npx cicm verify --accountShortName=${accountShortName} --safeUpdate`,
+                        `npx scicm verify --accountShortName=${accountShortName} --safeUpdate`,
                     ].join('\n')));
                 }
 
@@ -98,7 +98,7 @@ export default class VerifyConfiguration extends Command {
                                 `Local Value:\t${localValue}`,
                                 `Remote Value:\t${remoteValue}`,
                                 '\nIf you are sure the remote configuration is correct, you can force-update the local configuration with:',
-                                `npx cicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                                `npx scicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
                             ].join('\n')),)
                         }
 
@@ -107,7 +107,7 @@ export default class VerifyConfiguration extends Command {
                             `The local configuration for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) is out of date!`,
                             `The remote artifact is now updated with new different configurations on (v${packageArtifact.Version}).`,
                             'Run the following command to update the local configurations to the newest version:',
-                            `npx cicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                            `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
                         ].join('\n')));
 
                     }
@@ -126,7 +126,7 @@ export default class VerifyConfiguration extends Command {
                             `Failed to safely update local configurations for artifact "${packageArtifact.Id}"!`,
                             `The local configurations (v.${localConfigurations.artifactVersion}) is already newer than the remote configurations (v.${remoteConfigurations.artifactVersion}).`,
                             '\nIf you are sure the remote configuration is correct, you can force-update the local configuration with:\n',
-                            `npx cicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                            `npx scicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
                         ].join('\n')));
                     }
 

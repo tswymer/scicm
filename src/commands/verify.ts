@@ -1,7 +1,7 @@
 import { Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
-import { getLatestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
+import { getLatestLocalArtifactConfigurations, getLocallyManagedArtifact, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
 import { selectAccountShortName } from '../utils/cli-utils.js';
 import { getIntegrationArtifactConfigurations, getPackageIntergrationArtifacts } from '../utils/cloud-integration.js';
@@ -56,20 +56,35 @@ export default class VerifyConfiguration extends Command {
 
             let comparisonCounter = 0;
             const warnings: string[] = [];
-            for (const packageArtifact of packageArtifacts) {
+            for (const artifact of packageArtifacts) {
                 // Check if the artifact is ignored in the configuration
-                if (ignoredArtifactIds.includes(packageArtifact.Id)) continue;
+                if (ignoredArtifactIds.includes(artifact.Id)) continue;
+
+                const locallyManagedArtifactResult = await getLocallyManagedArtifact({
+                    packageId,
+                    artifactId: artifact.Id,
+                })
+
+                if (locallyManagedArtifactResult.result === 'ARTIFACT_CONFIGURATION_NOT_FOUND') this.error([
+                    `🚨 No local configurations found for artifact "${artifact.Id}"!`,
+                    'Run the following command to update the local configurations:',
+                    `@TODO`,
+                ].join('\n'));
+
+                console.assert(locallyManagedArtifactResult.result === 'OK');
+                const locallyManagedArtifact = locallyManagedArtifactResult.artifactConfiguration;
 
                 // Get the local and remote configurtions for this artifact
                 const localConfigurationsResult = await getLatestLocalArtifactConfigurations({
                     packageId,
-                    artifactId: packageArtifact.Id,
+                    artifactId: artifact.Id,
+                    locallyManagedArtifact
                 });
 
                 if (localConfigurationsResult.result === 'NO_LOCAL_CONFIGURATIONS') this.error([
-                    `🚨 No local configurations found for artifact "${packageArtifact.Id}"!`,
+                    `🚨 No local configurations found for artifact "${artifact.Id}"!`,
                     'Run the following command to update the local configurations:',
-                    `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                    `@TODO`,
                 ].join('\n'));
 
                 console.assert(localConfigurationsResult.result === 'OK');
@@ -77,25 +92,25 @@ export default class VerifyConfiguration extends Command {
 
                 const remoteConfigurations = await getIntegrationArtifactConfigurations({
                     environment,
-                    artifactId: packageArtifact.Id,
-                    artifactVersion: packageArtifact.Version,
+                    artifactId: artifact.Id,
+                    artifactVersion: artifact.Version,
                     artifactVariables,
                 });
 
                 // Check if the remote artifact version is identical to the local artifact configuration version
-                const isLocalConfigurationUpToDate = localConfigurations.artifactVersion === packageArtifact.Version;
+                const isLocalConfigurationUpToDate = localConfigurations.artifactVersion === artifact.Version;
                 if (!isLocalConfigurationUpToDate && !flags.safeUpdate) {
                     this.error(new Error([
-                        `🚨 Remote artifact version "${packageArtifact.Version}" for artifact "${packageArtifact.Id}" does not match latest local configuration version "${localConfigurations.artifactVersion}"!`,
+                        `🚨 Remote artifact version "${artifact.Version}" for artifact "${artifact.Id}" does not match latest local configuration version "${localConfigurations.artifactVersion}"!`,
                         'Run the following command to update the local configurations to the newest version:',
-                        `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                        `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${artifact.Id}`,
                         'Alternatively, run this command with the "--safeUpdate" flag to update the local configuration versions, as long as their configurations are unchanged:',
                         `npx scicm verify --accountShortName=${accountShortName} --safeUpdate`,
                     ].join('\n')));
                 }
 
                 // Compare the local and remote configurations
-                this.log(`Verifying ${remoteConfigurations.configurations.length}\tconfiguration(s) for artifact "${packageArtifact.Id}"...`);
+                this.log(`Verifying ${remoteConfigurations.configurations.length}\tconfiguration(s) for artifact "${artifact.Id}"...`);
                 const configurationComparison = compareArtifactConfigurations({
                     localConfigurations,
                     remoteConfigurations,
@@ -109,21 +124,21 @@ export default class VerifyConfiguration extends Command {
 
                         if (isLocalConfigurationUpToDate) {
                             return this.error(new Error([
-                                `🚨 Failed to verify configurations for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}): ${configurationComparison.result}`,
+                                `🚨 Failed to verify configurations for artifact "${artifact.Id}" (v.${artifact.Version}): ${configurationComparison.result}`,
                                 `The local configuration key "${configurationKey}" has a different value than the remote configuration value:`,
                                 `Local Value:\t${localValue}`,
                                 `Remote Value:\t${remoteValue}`,
                                 '\nIf you are sure the remote configuration is correct, you can force-update the local configuration with:',
-                                `npx scicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                                `npx scicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${artifact.Id}`,
                             ].join('\n')),)
                         }
 
                         return this.error(new Error([
-                            `🚨 Failed to verify configurations for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}): ${configurationComparison.result}`,
-                            `The local configuration for artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) is out of date!`,
-                            `The remote artifact is now updated with new different configurations on (v${packageArtifact.Version}).`,
+                            `🚨 Failed to verify configurations for artifact "${artifact.Id}" (v.${artifact.Version}): ${configurationComparison.result}`,
+                            `The local configuration for artifact "${artifact.Id}" (v.${artifact.Version}) is out of date!`,
+                            `The remote artifact is now updated with new different configurations on (v${artifact.Version}).`,
                             'Run the following command to update the local configurations to the newest version:',
-                            `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                            `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${artifact.Id}`,
                         ].join('\n')));
 
                     }
@@ -137,29 +152,30 @@ export default class VerifyConfiguration extends Command {
 
                 // If the remote configuration version is newer than the local configuration version, push the new version to the local configuration
                 if (!isLocalConfigurationUpToDate && flags.safeUpdate) {
-                    if (localConfigurations.artifactVersion >= packageArtifact.Version) {
+                    if (localConfigurations.artifactVersion >= artifact.Version) {
                         this.error(new Error([
-                            `Failed to safely update local configurations for artifact "${packageArtifact.Id}"!`,
+                            `Failed to safely update local configurations for artifact "${artifact.Id}"!`,
                             `The local configurations (v.${localConfigurations.artifactVersion}) is already newer than the remote configurations (v.${remoteConfigurations.artifactVersion}).`,
                             '\nIf you are sure the remote configuration is correct, you can force-update the local configuration with:\n',
-                            `npx scicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                            `npx scicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${artifact.Id}`,
                         ].join('\n')));
                     }
 
-                    this.log(`Local configurations for artifact "${packageArtifact.Id}" are out of date!`);
+                    this.log(`Local configurations for artifact "${artifact.Id}" are out of date!`);
                     // Update the local configuration version to the remote configuration version
                     await pushConfigurationVersion({
                         packageId,
-                        artifactId: packageArtifact.Id,
+                        artifactId: artifact.Id,
                         artifactVersion: remoteConfigurations.artifactVersion,
                         configurations: remoteConfigurations.configurations,
+                        locallyManagedArtifact,
                     });
-                    this.log(`Safely updated local configuration version for artifact "${packageArtifact.Id}" from (v.${localConfigurations.artifactVersion}) to (v.${remoteConfigurations.artifactVersion})!\n`);
+                    this.log(`Safely updated local configuration version for artifact "${artifact.Id}" from (v.${localConfigurations.artifactVersion}) to (v.${remoteConfigurations.artifactVersion})!\n`);
                 }
 
                 // If there are any warning, remember them for later
                 for (const unusedLocalConfigurationKey of configurationComparison.unusedLocalConfigurationKeys) {
-                    warnings.push(`Local configuration key "${unusedLocalConfigurationKey}" from artifact "${packageArtifact.Id}" (v.${packageArtifact.Version}) is not present in the remote configuration.`);
+                    warnings.push(`Local configuration key "${unusedLocalConfigurationKey}" from artifact "${artifact.Id}" (v.${artifact.Version}) is not present in the remote configuration.`);
                 }
 
                 // Update the comparison counter for logging

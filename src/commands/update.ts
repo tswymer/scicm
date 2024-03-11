@@ -1,7 +1,7 @@
 import { Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
-import { getLatestLocalArtifactConfigurations, overwriteExistingConfigurationVersion, pushConfigurationVersion } from '../utils/artifact-management.js';
+import { getLatestLocalArtifactConfigurations, getLocallyManagedArtifact, overwriteExistingConfigurationVersion, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
 import { selectAccountShortName, selectManagedIntegrationPackage, selectRemoteIntegrationArtifact } from '../utils/cli-utils.js';
 import { getIntegrationArtifactConfigurations, getIntegrationPackages, getPackageIntergrationArtifacts } from '../utils/cloud-integration.js';
@@ -88,10 +88,21 @@ export default class UpdateConfiguration extends Command {
         console.assert(remoteArtifactResult.result === 'OK');
         const { remoteArtifact } = remoteArtifactResult;
 
+        const locallyManagedArtifactResult = await getLocallyManagedArtifact({
+            artifactId: remoteArtifact.Id,
+            packageId: managedIntegrationPackage.packageId,
+        });
+
+        if (locallyManagedArtifactResult.result === 'ARTIFACT_CONFIGURATION_NOT_FOUND') this.error([
+            `The artifact "${remoteArtifact.Id}" is not currently monitored by this scicm project.`,
+            'Run the following command start monitoring the artifact configurations:',
+        ].join('\n'));
+
         // Get the local and remote configurtions for this artifact
         const latestLocalConfigurationsResult = await getLatestLocalArtifactConfigurations({
+            artifactId: remoteArtifact.Id,
             packageId: managedIntegrationPackage.packageId,
-            artifactId: remoteArtifact.Id
+            locallyManagedArtifact: locallyManagedArtifactResult.artifactConfiguration,
         });
 
         if (latestLocalConfigurationsResult.result === 'NO_LOCAL_CONFIGURATIONS') this.error([
@@ -129,6 +140,7 @@ export default class UpdateConfiguration extends Command {
                 artifactId: remoteArtifact.Id,
                 artifactVersion: remoteArtifact.Version,
                 configurations: remoteConfigurations.configurations,
+                locallyManagedArtifact: locallyManagedArtifactResult.artifactConfiguration,
             });
             this.log(`⬆️ Updated local configurations for artifact "${remoteArtifact.Id}" to new version (v.${remoteArtifact.Version})!`);
             return;
@@ -167,6 +179,7 @@ export default class UpdateConfiguration extends Command {
                 artifactId: remoteArtifact.Id,
                 artifactVersion: remoteArtifact.Version,
                 configurations: remoteConfigurations.configurations,
+                locallyManagedArtifact: locallyManagedArtifactResult.artifactConfiguration,
             });
             this.log(`♻️ Overwrote existing local artifact configurations for "${remoteArtifact.Id}" (v.${remoteArtifact.Version}) with new remote values!`);
         }

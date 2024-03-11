@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { integrationArtifactConfigurationSchema } from "./cloud-integration.js";
 
-const managedArtifactSchema = z.object({
+const locallyManagedArtifactSchema = z.object({
     _createdAt: z.string().datetime(),
     artifactId: z.string(),
     artifactConfigurations: z.array(z.object({
@@ -14,7 +14,7 @@ const managedArtifactSchema = z.object({
     })),
 });
 
-interface ArtifactIdentifier {
+type ArtifactIdentifier = {
     artifactId: string;
     packageId: string;
 }
@@ -26,10 +26,14 @@ function getManagedArtifactFilePath({ artifactId, packageId }: ArtifactIdentifie
     return join(process.cwd(), 'configuration', packageId, `${artifactId}.json`);
 }
 
+type SortManagedArtifactConfigurationsParams = {
+    locallyManagedArtifact: z.infer<typeof locallyManagedArtifactSchema>;
+}
+
 /**
  * Sorts the artifact configurations by version, high to low.
  */
-function sortManagedArtifactConfigurations(managedArtifact: z.infer<typeof managedArtifactSchema>) {
+function sortLocallyManagedArtifactConfigurations({ locallyManagedArtifact: managedArtifact }: SortManagedArtifactConfigurationsParams) {
     // Sort the artifact configurations by version
     managedArtifact.artifactConfigurations.sort((a, b) => {
         if (a.artifactVersion < b.artifactVersion) return 1;
@@ -38,10 +42,21 @@ function sortManagedArtifactConfigurations(managedArtifact: z.infer<typeof manag
     });
 }
 
+type CreateManagedArtifactParams = {
+    artifactConfiguration: z.infer<typeof locallyManagedArtifactSchema>;
+    packageId: string;
+}
+
+type CreateManagedArtifactResponse = {
+    result: 'ARTIFACT_CONFIGURATION_EXISTS';
+} | {
+    result: 'OK';
+};
+
 /**
  * Creates a new managed artifact configuration.
  */
-export async function createManagedArtifact(packageId: string, artifactConfiguration: z.infer<typeof managedArtifactSchema>) {
+export async function createManagedArtifact({ artifactConfiguration, packageId }: CreateManagedArtifactParams): Promise<CreateManagedArtifactResponse> {
     // Check if the integration package directory exists in the "configuration" directory
     const integrationPackageDirectoryPath = join(process.cwd(), 'configuration', packageId);
     const integrationPackageDirectoryExists = await access(integrationPackageDirectoryPath).then(() => true).catch(() => false);
@@ -49,104 +64,107 @@ export async function createManagedArtifact(packageId: string, artifactConfigura
 
     // Check there isn't already a configuration for the artifact
     const artifactConfigurationFilePath = join(integrationPackageDirectoryPath, `${artifactConfiguration.artifactId}.json`);
-    if (await access(artifactConfigurationFilePath).then(() => true).catch(() => false)) {
-        throw new Error(`Artifact configuration "${artifactConfigurationFilePath}" already exists.`);
-    }
+    if (await access(artifactConfigurationFilePath).then(() => true).catch(() => false)) return { result: 'ARTIFACT_CONFIGURATION_EXISTS' };
 
     // Create the initial artifact configuration file
     await writeFile(artifactConfigurationFilePath, JSON.stringify(artifactConfiguration, null, 2));
+
+    return { result: 'OK' };
 }
+
+type GetLocallyManagedArtifactResult = {
+    artifactConfiguration: z.infer<typeof locallyManagedArtifactSchema>;
+    result: 'OK';
+} | {
+    result: 'ARTIFACT_CONFIGURATION_NOT_FOUND';
+};
 
 /**
  * Retrieve a managed artifact configuration.
  */
-export async function getManagedArtifact({ artifactId, packageId }: ArtifactIdentifier) {
+export async function getLocallyManagedArtifact({ artifactId, packageId }: ArtifactIdentifier): Promise<GetLocallyManagedArtifactResult> {
     // Get the artifact configuration
     const artifactConfigurationFilePath = getManagedArtifactFilePath({ artifactId, packageId });
-    if (!await access(artifactConfigurationFilePath).then(() => true).catch(() => false)) {
-        throw new Error(`Artifact configuration "${artifactConfigurationFilePath}" does not exist.`);
-    }
+    if (!await access(artifactConfigurationFilePath).then(() => true).catch(() => false)) return { result: 'ARTIFACT_CONFIGURATION_NOT_FOUND' };
 
-    return managedArtifactSchema.parse(JSON.parse(await readFile(artifactConfigurationFilePath, 'utf8')));
+    return {
+        artifactConfiguration: locallyManagedArtifactSchema.parse(JSON.parse(await readFile(artifactConfigurationFilePath, 'utf8'))),
+        result: 'OK',
+    };
 }
 
 interface UpdateConfigurationVersionParams extends ArtifactIdentifier {
     artifactVersion: string;
     configurations: z.infer<typeof integrationArtifactConfigurationSchema>[];
+    locallyManagedArtifact: z.infer<typeof locallyManagedArtifactSchema>;
 }
 
 /**
  * Update an existing local artifact configuration version.
  */
-export async function overwriteExistingConfigurationVersion({ artifactId, artifactVersion, configurations, packageId }: UpdateConfigurationVersionParams) {
-    // Get the artifact configuration
-    const localArtifactConfiguration = await getManagedArtifact({ packageId, artifactId });
-
+export async function overwriteExistingConfigurationVersion({ artifactId, artifactVersion, configurations, packageId, locallyManagedArtifact }: UpdateConfigurationVersionParams) {
     // Get the existing configuration
-    const existingConfigurations = localArtifactConfiguration.artifactConfigurations.filter(config => config.artifactVersion === artifactVersion);
+    const existingConfigurations = locallyManagedArtifact.artifactConfigurations.filter(config => config.artifactVersion === artifactVersion);
     if (existingConfigurations.length === 0) throw new Error(`No configurations found for version "${artifactVersion}" of artifact "${artifactId}" from package "${packageId}".`);
     if (existingConfigurations.length > 1) throw new Error(`Multiple configurations found for version "${artifactVersion}" of artifact "${artifactId}" from package "${packageId}".`);
 
     // Get the index of the existing configuration
-    const existingConfigurationIndex = localArtifactConfiguration.artifactConfigurations.findIndex(config => config.artifactVersion === artifactVersion);
+    const existingConfigurationIndex = locallyManagedArtifact.artifactConfigurations.findIndex(config => config.artifactVersion === artifactVersion);
     if (existingConfigurationIndex === -1) throw new Error(`No configurations found for version "${artifactVersion}" of artifact "${artifactId}" from package "${packageId}".`);
 
     // Update the existing configuration
-    localArtifactConfiguration.artifactConfigurations[existingConfigurationIndex]._createdAt = new Date().toISOString();
-    localArtifactConfiguration.artifactConfigurations[existingConfigurationIndex].configurations = configurations;
-    sortManagedArtifactConfigurations(localArtifactConfiguration);
+    locallyManagedArtifact.artifactConfigurations[existingConfigurationIndex]._createdAt = new Date().toISOString();
+    locallyManagedArtifact.artifactConfigurations[existingConfigurationIndex].configurations = configurations;
+    sortLocallyManagedArtifactConfigurations({ locallyManagedArtifact });
 
     // Write the updated configuration
     const artifactConfigurationFilePath = getManagedArtifactFilePath({ packageId, artifactId });
-    await writeFile(artifactConfigurationFilePath, JSON.stringify(localArtifactConfiguration, null, 2));
+    await writeFile(artifactConfigurationFilePath, JSON.stringify(locallyManagedArtifact, null, 2));
 }
 
 interface PushConfigurationVersionParams extends ArtifactIdentifier {
     artifactVersion: string;
     configurations: z.infer<typeof integrationArtifactConfigurationSchema>[];
+    locallyManagedArtifact: z.infer<typeof locallyManagedArtifactSchema>;
 }
 
 /**
  * Add a new artifact configuration version.
  */
-export async function pushConfigurationVersion({ artifactId, artifactVersion, configurations, packageId }: PushConfigurationVersionParams) {
-    // Get the artifact configuration
-    const localArtifactConfiguration = await getManagedArtifact({ packageId, artifactId });
-
+export async function pushConfigurationVersion({ artifactId, artifactVersion, configurations, packageId, locallyManagedArtifact }: PushConfigurationVersionParams) {
     // Add the new configuration
-    localArtifactConfiguration.artifactConfigurations.push({
+    locallyManagedArtifact.artifactConfigurations.push({
         _createdAt: new Date().toISOString(),
         artifactVersion,
         configurations,
     });
 
-    sortManagedArtifactConfigurations(localArtifactConfiguration);
+    sortLocallyManagedArtifactConfigurations({ locallyManagedArtifact });
 
     // Write the updated configuration
     const artifactConfigurationFilePath = getManagedArtifactFilePath({ packageId, artifactId });
-    await writeFile(artifactConfigurationFilePath, JSON.stringify(localArtifactConfiguration, null, 2));
+    await writeFile(artifactConfigurationFilePath, JSON.stringify(locallyManagedArtifact, null, 2));
 }
 
 type GetLatestLocalArtifactConfigurationsParams = {
     artifactId: string;
+    locallyManagedArtifact: z.infer<typeof locallyManagedArtifactSchema>;
     packageId: string;
 }
 
 type GetLatestLocalArtifactConfigurationsResponse = {
-    artifactConfiguration: Awaited<ReturnType<typeof getManagedArtifact>>['artifactConfigurations'][number];
+    artifactConfiguration: Extract<Awaited<ReturnType<typeof getLocallyManagedArtifact>>, { result: 'OK' }>['artifactConfiguration']['artifactConfigurations'][number];
     result: 'OK';
 } | {
     result: 'NO_LOCAL_CONFIGURATIONS';
 };
 
-export async function getLatestLocalArtifactConfigurations({ artifactId, packageId }: GetLatestLocalArtifactConfigurationsParams): Promise<GetLatestLocalArtifactConfigurationsResponse> {
-    const artifactConfiguration = await getManagedArtifact({ packageId, artifactId });
-
+export async function getLatestLocalArtifactConfigurations({ artifactId, packageId, locallyManagedArtifact }: GetLatestLocalArtifactConfigurationsParams): Promise<GetLatestLocalArtifactConfigurationsResponse> {
     // Sort the artifact configurations by version
-    sortManagedArtifactConfigurations(artifactConfiguration);
+    sortLocallyManagedArtifactConfigurations({ locallyManagedArtifact });
 
     // Get the latest artifact configurations by version
-    const latestArtifactConfiguration = artifactConfiguration.artifactConfigurations.at(0);
+    const latestArtifactConfiguration = locallyManagedArtifact.artifactConfigurations.at(0);
     if (!latestArtifactConfiguration) return { result: 'NO_LOCAL_CONFIGURATIONS' };
 
     // Sanity check that there is a version

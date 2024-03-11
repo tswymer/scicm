@@ -109,7 +109,6 @@ export default class AddPackage extends Command {
                     ...config.managedIntegrationPackages ?? [],
                     {
                         packageId,
-                        monitoredArtifactIds: selectedIntegrationArtifactIds,
                         ignoredArtifactIds: excludedArtifactIds,
                     },
                 ],
@@ -140,14 +139,17 @@ export default class AddPackage extends Command {
 
             // Create the artifact configuration management file
             const createdAt = new Date().toISOString();
-            await createManagedArtifact(packageId, {
-                _createdAt: createdAt,
-                artifactId: artifact.Id,
-                artifactConfigurations: [{
+            await createManagedArtifact({
+                packageId,
+                artifactConfiguration: {
                     _createdAt: createdAt,
-                    artifactVersion: artifact.Version,
-                    configurations: artifactConfigurations.configurations
-                }]
+                    artifactId: artifact.Id,
+                    artifactConfigurations: [{
+                        _createdAt: createdAt,
+                        artifactVersion: artifact.Version,
+                        configurations: artifactConfigurations.configurations
+                    }]
+                }
             });
 
             this.log(`✅ Exported ${artifactConfigurations.configurations.length ?? 0}\tconfiguration(s) for "${artifact.Id}"`);

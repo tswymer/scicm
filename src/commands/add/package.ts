@@ -3,7 +3,8 @@ import { Command, Flags, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getArtifactVariables } from '../../utils/artifact-variables.js';
-import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
+import { selectAccountShortName } from '../../utils/cli-utils.js';
+import { getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 import { getConfig, getEnvironment, setConfig } from '../../utils/scicm-configuration.js';
 
 export default class AddPackage extends Command {
@@ -19,24 +20,15 @@ export default class AddPackage extends Command {
 
         this.log('Add a new Intergration Package to the Cloud Integration Configuration Manager\n');
 
-        const { integrationEnvironments } = await getConfig();
+        const config = await getConfig();
 
-        // Select the environment to add the integration package from
-        const accountShortName = flags.accountShortName ?? await select({
-            message: 'Select the environment to add the integration package from:',
-            choices: integrationEnvironments.map(environment => ({
-                value: environment.accountShortName,
-                name: `${buildCIODataURL({
-                    accountShortName: environment.accountShortName,
-                    region: environment.region,
-                    sslHost: environment.sslHost,
-                })}`,
-            })),
+        const accountShortName = await selectAccountShortName({
+            config,
+            defaultAccountShortName: flags.accountShortName,
         });
 
         this.log('');
 
-        const config = await getConfig();
         const environment = getEnvironment(config, accountShortName);
         const artifactVariables = await getArtifactVariables(environment.accountShortName);
 

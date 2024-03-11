@@ -1,10 +1,10 @@
-import { select } from '@inquirer/prompts';
 import { Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
-import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
+import { selectAccountShortName } from '../utils/cli-utils.js';
+import { getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
 import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
 import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 
@@ -21,17 +21,9 @@ export default class VerifyConfiguration extends Command {
 
         const config = await getConfig();
 
-        // Get the accountShortName to update the configurations from
-        const accountShortName = flags.accountShortName ?? await select({
-            message: 'Select the environment to add the integration package from:',
-            choices: config.integrationEnvironments.map(environment => ({
-                value: environment.accountShortName,
-                name: `${buildCIODataURL({
-                    accountShortName: environment.accountShortName,
-                    region: environment.region,
-                    sslHost: environment.sslHost,
-                })}`,
-            })),
+        const accountShortName = await selectAccountShortName({
+            config,
+            defaultAccountShortName: flags.accountShortName,
         });
 
         const environment = getEnvironment(config, accountShortName);

@@ -3,8 +3,8 @@ import { Command, Flags, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getArtifactVariables } from '../../utils/artifact-variables.js';
-import { getConfig, getEnvironment, setConfig } from '../../utils/scicm-configuration.js';
 import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
+import { getConfig, getEnvironment, setConfig } from '../../utils/scicm-configuration.js';
 
 export default class AddPackage extends Command {
     static description = 'Add an integration package to your Cloud Integration Configuration Manager (cicm) project.';
@@ -69,7 +69,7 @@ export default class AddPackage extends Command {
 
         this.log('');
 
-        const selectedIntegrationArtifacts = await checkbox({
+        const selectedIntegrationArtifactIds = await checkbox({
             message: 'Select the integration artifacts to start managing configurations for:',
             required: true,
             choices: integrationDesigntimeArtifacts.map(artifact => ({
@@ -88,7 +88,7 @@ export default class AddPackage extends Command {
 
         // Get the list of excluded artifact ids
         const excludedArtifactIds = integrationDesigntimeArtifacts
-            .filter(artifact => !selectedIntegrationArtifacts.includes(artifact.Id))
+            .filter(artifact => !selectedIntegrationArtifactIds.includes(artifact.Id))
             .map(artifact => artifact.Id);
 
         // Update the configuration with the new managed integration package
@@ -98,6 +98,7 @@ export default class AddPackage extends Command {
                 ...config.managedIntegrationPackages ?? [],
                 {
                     packageId: selectedPackageId,
+                    monitoredArtifactIds: selectedIntegrationArtifactIds,
                     ignoredArtifactIds: excludedArtifactIds,
                 },
             ]
@@ -111,7 +112,7 @@ export default class AddPackage extends Command {
 
         let exportedConfigurations = 0;
 
-        for (const selectedArtifact of selectedIntegrationArtifacts) {
+        for (const selectedArtifact of selectedIntegrationArtifactIds) {
             // Get the artifact from the list of monitored artifacts
             const artifact = integrationArtifacts.find(artifact => artifact.Id === selectedArtifact);
             if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${selectedPackageId}".`);

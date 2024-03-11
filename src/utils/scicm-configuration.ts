@@ -33,6 +33,7 @@ export const ciEnvironmentSchema = z.object({
 
 export const managedIntegrationPackageSchema = z.object({
     packageId: z.string(),
+    monitoredArtifactIds: z.array(z.string()),
     ignoredArtifactIds: z.array(z.string()),
 });
 

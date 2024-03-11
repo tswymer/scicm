@@ -5,6 +5,7 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 
+import { ARTIFACT_VARIABLES_TEMPLATE } from '../utils/artifact-variables.js';
 import { testCredentials } from '../utils/cloud-integration.js';
 import { CIRegion, ciEnvironmentSchema, ciRegions, setConfig } from '../utils/scicm-configuration.js';
 import { scicmSecretsSchema, setSCICMSecrets } from '../utils/scicm-secrets.js';
@@ -52,14 +53,15 @@ export default class Init extends Command {
     this.log('Provide the environment details for the first CI instance to monitor.');
     this.log('You can add more instances after the setup is complete.\n');
 
-    this.log('When entering the CI instance URL, please follow this format:');
-    this.log('https://{Account Short Name}-tmn.{SSL Host}.{Region}.hana.ondemand.com/api/v1');
-    this.log('Where:');
-    this.log('- {Account Short Name} is your specific account identifier.');
-    this.log('- {SSL Host} typically represents the SSL certificate name or a service identifier.');
-    this.log('- {Region} is the data center region where your CI instance is hosted, such as eu1, us1, ap1, etc.');
-    this.log('For example, if your account short name is "l123456", your SSL host is "hci", and your instance is hosted in the "eu1" region,');
-    this.log('your CI instance URL would be "https://l123456-tmn.hci.eu1.hana.ondemand.com".\n');
+    this.log('Please enter the CI instance URL in the following format:');
+    this.log('  https://{Account Short Name}-tmn.{SSL Host}.{Region}.hana.ondemand.com/api/v1');
+    this.log('\nWhere:');
+    this.log('  - {Account Short Name} is your specific account identifier.');
+    this.log('  - {SSL Host} is typically the SSL certificate name or service identifier.');
+    this.log('  - {Region} is the data center region (e.g., eu1, us1, ap1).\n');
+    this.log('Example:');
+    this.log('  If your account short name is "l123456", SSL host is "hci", and region is "eu1.hana.ondemand.com",');
+    this.log('  your URL would be: "https://l123456-tmn.hci.eu1.hana.ondemand.com".\n');
 
     const initialEnvironment = {
       accountShortName: flags.ciAccountShortName ?? await input({ message: 'CI Account Short Name:' }),
@@ -148,15 +150,3 @@ export default class Init extends Command {
     this.log(`\nYour project is now set up and ready to use!`);
   }
 }
-
-const ARTIFACT_VARIABLES_TEMPLATE = `import "dotenv/config";
-
-/** @type {import('scicm/dist/utils/artifact-variables').GetArtifactVariables} */
-export function getArtifactVariables(accountShortName) {
-  console.log('Creating artifact variables for:', accountShortName)
-
-  return {
-    MY_VARIABLE_KEY: 'MY_VARIABLE_VALUE',
-  }
-}
-`;

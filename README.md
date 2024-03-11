@@ -2,6 +2,8 @@
 
 Manage SAP Cloud Integration artifact configuration values with Git. Verify artifact configuration changes within SAP Cloud Integration to confidently deploy.
 
+**Disclaimer: This project is not affiliated with SAP in any way. No offical support will be provided.**
+
 ## Prerequisites & Installation
 
 scicm requires the following prerequisites to be installed:
@@ -20,7 +22,7 @@ npx scicm init
 
 After completing the setup wizard for a project named `my-scicm-project`, the following files and folders will be created:
 
-- `./my-scicm-project/` - scicm project folder
+- `./my-scicm-project/` - your scicm project folder
 - `./my-scicm-project/scicm-config.json` - scicm configuration file
 - `./my-scicm-project/artifact-variables.js` - artifact variables file
 - `./my-scicm-project/.env` - environment variables file
@@ -33,7 +35,7 @@ Some additional housekeeping files will also be created:
 
 ## Add an Integration Package
 
-To start monitoring the configuration values for integration artifacts withing an integration package, run the following command to run the setup wizard and add a new integration package to your scicm project:
+To start monitoring the configuration values for integration artifacts within an integration package, run the following command to run the setup wizard and add a new integration package to your scicm project:
 
 ```bash
 npx scicm add package
@@ -64,3 +66,7 @@ When configuration changes are made in SAP Cloud Integration, the configuration 
 ```bash
 npx scicm update
 ```
+
+## Add Integration Artifacts
+
+Not yet implemented.

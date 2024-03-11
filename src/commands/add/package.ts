@@ -1,9 +1,9 @@
-import { checkbox, select } from '@inquirer/prompts';
+import { checkbox } from '@inquirer/prompts';
 import { Command, Flags, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getArtifactVariables } from '../../utils/artifact-variables.js';
-import { selectAccountShortName } from '../../utils/cli-utils.js';
+import { selectAccountShortName, selectManagedIntegrationPackage } from '../../utils/cli-utils.js';
 import { getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
 import { getConfig, getEnvironment, setConfig } from '../../utils/scicm-configuration.js';
 
@@ -39,24 +39,22 @@ export default class AddPackage extends Command {
 
         this.log('');
 
-        const selectedPackageId = flags.packageId ?? await select({
-            message: 'Select an Intergration Package to start managing configuration for:',
-            choices: integrationPackages.map(pkg => ({
-                value: pkg.id,
-                name: `[${pkg.id}]:\t${pkg.name ?? '_Unnamed_Package_'}`,
-            })),
+        const managedIntegrationPackage = await selectManagedIntegrationPackage({
+            config,
+            defaultPackageId: flags.packageId,
+            integrationPackages,
         });
 
         // Make sure the package is not already being monitored
-        if (config.managedIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === selectedPackageId)) {
-            this.error(`The integration package ${selectedPackageId} is already being monitored.`);
+        if (config.managedIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === managedIntegrationPackage.packageId)) {
+            this.error(`The integration package ${managedIntegrationPackage.packageId} is already being monitored.`);
         }
 
         this.log('');
 
         // Get the integration package designtime artifacts to monitor
-        ux.action.start(`Loading integration artifacts from package "${selectedPackageId}"...`);
-        const integrationDesigntimeArtifacts = await getIntergrationPackageArtifacts(environment, selectedPackageId);
+        ux.action.start(`Loading integration artifacts from package "${managedIntegrationPackage.packageId}"...`);
+        const integrationDesigntimeArtifacts = await getIntergrationPackageArtifacts(environment, managedIntegrationPackage.packageId);
         ux.action.stop();
 
         this.log('');
@@ -89,7 +87,7 @@ export default class AddPackage extends Command {
             managedIntegrationPackages: [
                 ...config.managedIntegrationPackages ?? [],
                 {
-                    packageId: selectedPackageId,
+                    packageId: managedIntegrationPackage.packageId,
                     monitoredArtifactIds: selectedIntegrationArtifactIds,
                     ignoredArtifactIds: excludedArtifactIds,
                 },
@@ -100,14 +98,14 @@ export default class AddPackage extends Command {
 
         // Export the configurations for the selected artifacts
         ux.action.start(`Exporting integration artifact configurations...`);
-        const integrationArtifacts = await getIntergrationPackageArtifacts(environment, selectedPackageId);
+        const integrationArtifacts = await getIntergrationPackageArtifacts(environment, managedIntegrationPackage.packageId);
 
         let exportedConfigurations = 0;
 
         for (const selectedArtifact of selectedIntegrationArtifactIds) {
             // Get the artifact from the list of monitored artifacts
             const artifact = integrationArtifacts.find(artifact => artifact.Id === selectedArtifact);
-            if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${selectedPackageId}".`);
+            if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${managedIntegrationPackage.packageId}".`);
 
             // Get the configurations for the artifact
             const artifactConfigurations = await getIntegrationArtifactConfigurations({
@@ -120,7 +118,7 @@ export default class AddPackage extends Command {
 
             // Create the artifact configuration management file
             const createdAt = new Date().toISOString();
-            await createManagedArtifact(selectedPackageId, {
+            await createManagedArtifact(managedIntegrationPackage.packageId, {
                 _createdAt: createdAt,
                 artifactId: artifact.Id,
                 artifactConfigurations: [{
@@ -135,6 +133,6 @@ export default class AddPackage extends Command {
 
         ux.action.stop(`export complete!\n`);
 
-        this.log(`🎉 Successfully added ${exportedConfigurations} configurations from the "${selectedPackageId}" integration package!`);
+        this.log(`🎉 Successfully added ${exportedConfigurations} configurations from the "${managedIntegrationPackage.packageId}" integration package!`);
     }
 }

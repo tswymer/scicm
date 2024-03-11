@@ -1,10 +1,9 @@
-import { select } from '@inquirer/prompts';
 import { Command, Flags, ux } from '@oclif/core';
 
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, overwriteExistingConfigurationVersion, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
-import { selectAccountShortName } from '../utils/cli-utils.js';
+import { selectAccountShortName, selectManagedIntegrationPackage, selectRemoteIntegrationArtifact } from '../utils/cli-utils.js';
 import { getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
 import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 
@@ -18,9 +17,9 @@ export default class UpdateConfiguration extends Command {
 
     async run(): Promise<void> {
         const { flags } = await this.parse(UpdateConfiguration);
-
         const config = await getConfig();
 
+        // Get the accountShortName from the user
         const accountShortName = await selectAccountShortName({
             config,
             defaultAccountShortName: flags.accountShortName,
@@ -34,81 +33,58 @@ export default class UpdateConfiguration extends Command {
         const integrationPackages = await getIntegrationPackages(environment);
         ux.action.stop();
 
-        // Get the package to update the configurations from
-        const packageId = flags.packageId ?? await select({
-            message: 'Select an Intergration Package to start managing configuration for:',
-            choices: integrationPackages.map(pkg => ({
-                value: pkg.id,
-                name: `[${pkg.id}]:\t${pkg.name ?? '_Unnamed_Package_'}`,
-            })),
+        // Get the integration package to update from the user
+        const managedIntegrationPackage = await selectManagedIntegrationPackage({
+            config,
+            defaultPackageId: flags.packageId,
+            integrationPackages,
         });
 
         // Get the artifact to update the configurations for
-        const managedIntegrationArtifact = config.managedIntegrationPackages?.find(monitoredPackage => monitoredPackage.packageId === packageId);
-        if (!managedIntegrationArtifact) this.error([
-            `The integration package ${packageId} is not being monitored.`,
-            `Run "npx scicm add package --accountShortName=${accountShortName} --packageId=${packageId}" to start monitoring it.`,
-        ].join('\n'));
-
-        // Get the artifact to update the configurations for
-        ux.action.start(`Loading integration artifacts for package "${packageId}" from SAP CI...`);
-        const remoteArtifacts = await getIntergrationPackageArtifacts(environment, packageId);
+        ux.action.start(`Loading integration artifacts for package "${managedIntegrationPackage.packageId}" from SAP CI...`);
+        const remoteArtifacts = await getIntergrationPackageArtifacts(environment, managedIntegrationPackage.packageId);
         ux.action.stop();
 
-        // Remove the ignored artifacts from the artifacts list
-        const monitoredArtifacts = remoteArtifacts.filter(remoteArtifact => !managedIntegrationArtifact.ignoredArtifactIds.includes(remoteArtifact.Id));
-
         // Get the artifact to update the configurations for
-        const artifactId = flags.artifactId ?? await select({
-            message: 'Select an Intergration Artifact to update configurations for:',
-            choices: monitoredArtifacts.map(artifact => ({
-                value: artifact.Id,
-                name: `[${artifact.Id}]:\t${artifact.Name ?? '_Unnamed_Artifact_'}`,
-            })),
+        const remoteArtifact = await selectRemoteIntegrationArtifact({
+            remoteArtifacts,
+            managedIntegrationPackage,
+            defaultArtifactId: flags.artifactId,
         });
 
-        // Double check that the artifact id is being monitored
-        if (!monitoredArtifacts.some(monitoredArtifacts => monitoredArtifacts.Id === artifactId)) {
-            this.error([
-                `The artifact "${artifactId}" is not being monitored in the package "${packageId}".`,
-                `Run "npx scicm add package --accountShortName=${accountShortName} --packageId ${packageId}" to start monitoring it.`,
-            ].join('\n'));
-        }
-
-        // Find the remote artifact
-        const remoteArtifact = remoteArtifacts.find(artifact => artifact.Id === artifactId);
-        if (!remoteArtifact) this.error(`🚨 Artifact "${artifactId}" does not exist in the package "${packageId}"!`);
-
         // Get the local and remote configurtions for this artifact
-        const localConfigurations = await getLatestLocalArtifactConfigurations({ packageId, artifactId });
+        const latestLocalConfigurations = await getLatestLocalArtifactConfigurations({
+            packageId: managedIntegrationPackage.packageId,
+            artifactId: remoteArtifact.Id
+        });
         const remoteConfigurations = await getIntegrationArtifactConfigurations({
             environment,
-            artifactId,
+            artifactId: remoteArtifact.Id,
             artifactVersion: remoteArtifact.Version,
             artifactVariables,
         });
 
         // Check if the remote artifact version exists locally
-        const remoteVersionExistsLocally = localConfigurations.artifactVersion === remoteArtifact.Version;
+        const remoteVersionExistsLocally = latestLocalConfigurations.artifactVersion === remoteArtifact.Version;
 
         // If the remote version doesn't exist locally yet, update it and we are done
         if (!remoteVersionExistsLocally) {
             // Check if the remote version is newer than the local one
-            if (localConfigurations.artifactVersion > remoteArtifact.Version) {
+            if (latestLocalConfigurations.artifactVersion > remoteArtifact.Version) {
                 this.error([
-                    `🚨 The newest local artifact configuration for "${artifactId}" (v.${localConfigurations.artifactVersion}) is newer than the remote one (v.${remoteArtifact.Version}).`,
+                    `🚨 The newest local artifact configuration for "${remoteArtifact.Id}" (v.${latestLocalConfigurations.artifactVersion}) is newer than the remote one (v.${remoteArtifact.Version}).`,
                     `This probably happened because a remote integration artifact was reverted to a previous version.`,
                     `Please remove the newer local configurations and run the command again to update the configurations.`,
                 ].join('\n'));
             }
 
             await pushConfigurationVersion({
-                packageId,
-                artifactId,
+                packageId: managedIntegrationPackage.packageId,
+                artifactId: remoteArtifact.Id,
                 artifactVersion: remoteArtifact.Version,
                 configurations: remoteConfigurations.configurations,
             });
-            this.log(`⬆️ Updated local configurations for artifact "${artifactId}" to new version (v.${remoteArtifact.Version})!`);
+            this.log(`⬆️ Updated local configurations for artifact "${remoteArtifact.Id}" to new version (v.${remoteArtifact.Version})!`);
             return;
         }
 
@@ -118,13 +94,13 @@ export default class UpdateConfiguration extends Command {
 
             // If it does, compare it's configuration values against the local ones
             const configurationComparison = compareArtifactConfigurations({
-                localConfigurations,
+                localConfigurations: latestLocalConfigurations,
                 remoteConfigurations,
             });
 
             if (configurationComparison.result === 'OK') {
                 this.warn([
-                    `The local artifact configuration for "${artifactId}" is already up to date (v.${remoteArtifact.Version}).`,
+                    `The local artifact configuration for "${remoteArtifact.Id}" is already up to date (v.${remoteArtifact.Version}).`,
                     `No changes are required.`,
                 ].join('\n'));
                 return;
@@ -133,20 +109,20 @@ export default class UpdateConfiguration extends Command {
             // If the don't match and we aren't force updating, error out
             if (!flags.force) {
                 this.error([
-                    `🚨 The local artifact configuration for "${artifactId}" is not safe to update, as it's local configuration differs from the remote one, even though their version (v.${remoteArtifact.Version})is the same. (${configurationComparison.result})`,
+                    `🚨 The local artifact configuration for "${remoteArtifact.Id}" is not safe to update, as it's local configuration differs from the remote one, even though their version (v.${remoteArtifact.Version})is the same. (${configurationComparison.result})`,
                     `Run the command with the --force flag to update the local configuration:`,
-                    `npx scicm update ${accountShortName} ${packageId} ${artifactId} --force`,
+                    `npx scicm update ${accountShortName} ${managedIntegrationPackage.packageId} ${remoteArtifact.Id} --force`,
                 ].join('\n'));
             }
 
             // Forcefully update the local configuration
             await overwriteExistingConfigurationVersion({
-                packageId,
-                artifactId,
+                packageId: managedIntegrationPackage.packageId,
+                artifactId: remoteArtifact.Id,
                 artifactVersion: remoteArtifact.Version,
                 configurations: remoteConfigurations.configurations,
             });
-            this.log(`♻️ Overwrote existing local artifact configurations for "${artifactId}" (v.${remoteArtifact.Version}) with new remote values!`);
+            this.log(`♻️ Overwrote existing local artifact configurations for "${remoteArtifact.Id}" (v.${remoteArtifact.Version}) with new remote values!`);
         }
     }
 }

@@ -4,9 +4,9 @@ import { Command, Flags, ux } from '@oclif/core';
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
-import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 import { buildCIODataURL, getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
 import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
+import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 
 export default class VerifyConfiguration extends Command {
     static description = 'Verfify the artifact configurations for a Cloud Integration environment.';
@@ -97,7 +97,7 @@ export default class VerifyConfiguration extends Command {
                                 `The local configuration key "${configurationKey}" has a different value than the remote configuration value:`,
                                 `Local Value:\t${localValue}`,
                                 `Remote Value:\t${remoteValue}`,
-                                'If you are sure the remote configuration is correct, you can force-update the local configuration with:',
+                                '\nIf you are sure the remote configuration is correct, you can force-update the local configuration with:',
                                 `npx cicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
                             ].join('\n')),)
                         }
@@ -125,7 +125,7 @@ export default class VerifyConfiguration extends Command {
                         this.error(new Error([
                             `Failed to safely update local configurations for artifact "${packageArtifact.Id}"!`,
                             `The local configurations (v.${localConfigurations.artifactVersion}) is already newer than the remote configurations (v.${remoteConfigurations.artifactVersion}).`,
-                            'If you are sure the remote configuration is correct, you can force-update the local configuration with:\n',
+                            '\nIf you are sure the remote configuration is correct, you can force-update the local configuration with:\n',
                             `npx cicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
                         ].join('\n')));
                     }

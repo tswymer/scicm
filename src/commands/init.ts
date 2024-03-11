@@ -99,7 +99,7 @@ export default class Init extends Command {
 
     // Create a .gitignore file to exclude the .env file (secrets)
     const gitIngnoreFilePath = join(projectPath, '.gitignore');
-    await writeFile(gitIngnoreFilePath, '.env');
+    await writeFile(gitIngnoreFilePath, 'node_modules\n\n.env');
     this.log(`✅ Created ${gitIngnoreFilePath} to exclude .env`);
 
     // Write the secrets to the .env file
@@ -131,7 +131,9 @@ export default class Init extends Command {
   }
 }
 
-const ARTIFACT_VARIABLES_TEMPLATE = `/** @type {import('scicm/utils/artifact-variables').GetArtifactVariables} */
+const ARTIFACT_VARIABLES_TEMPLATE = `import "dotenv/config";
+
+/** @type {import('scicm/dist/utils/artifact-variables').GetArtifactVariables} */
 export function getArtifactVariables(accountShortName) {
   console.log('Creating artifact variables for:', accountShortName)
 

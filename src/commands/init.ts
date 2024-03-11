@@ -129,6 +129,8 @@ export default class Init extends Command {
 
     ux.action.stop(`Project successfully created!`);
 
+    this.log('');
+
     ux.action.start('Installing dependencies...');
 
     // Install the dependencies for the user

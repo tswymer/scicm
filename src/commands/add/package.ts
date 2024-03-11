@@ -4,7 +4,7 @@ import { Command, Flags, ux } from '@oclif/core';
 import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getArtifactVariables } from '../../utils/artifact-variables.js';
 import { selectAccountShortName, selectManagedIntegrationPackage } from '../../utils/cli-utils.js';
-import { getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../../utils/cloud-integration.js';
+import { getIntegrationArtifactConfigurations, getIntegrationPackages, getPackageIntergrationArtifacts } from '../../utils/cloud-integration.js';
 import { getConfig, getEnvironment, setConfig } from '../../utils/scicm-configuration.js';
 
 export default class AddPackage extends Command {
@@ -36,8 +36,16 @@ export default class AddPackage extends Command {
 
         this.log('');
 
-        const environment = getEnvironment(config, accountShortName);
-        const artifactVariables = await getArtifactVariables(environment.accountShortName);
+        const getEnvironmentResult = getEnvironment({ config, accountShortName });
+
+        if (getEnvironmentResult.result === 'UNKNOWN_ENVIRONMENT') this.error([
+            `The accountShortName "${accountShortName}" does not exist in the configuration file.`,
+        ].join('\n'));
+
+        console.assert(getEnvironmentResult.result === 'OK');
+        const { environment } = getEnvironmentResult;
+
+        const artifactVariables = await getArtifactVariables({ accountShortName: environment.accountShortName });
 
         // Get the integration package to add from the user
         ux.action.start('Loading integration packages from SAP CI...');
@@ -52,23 +60,21 @@ export default class AddPackage extends Command {
             integrationPackages,
         });
 
-        if (managedIntegrationPackageResult.result === 'NOT_MONITORED') this.error([
-            `The packageId "${flags.packageId}" is not monitored in the configuration file.`
-        ].join('\n'));
-
-        console.assert(managedIntegrationPackageResult.result === 'OK');
-        const { managedIntegrationPackage } = managedIntegrationPackageResult;
+        const packageId = (() => {
+            if (managedIntegrationPackageResult.result === 'NOT_MONITORED') return managedIntegrationPackageResult.packageId;
+            return managedIntegrationPackageResult.managedIntegrationPackage.packageId;
+        })();
 
         // Make sure the package is not already being monitored
-        if (config.managedIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === managedIntegrationPackage.packageId)) {
-            this.error(`The integration package ${managedIntegrationPackage.packageId} is already being monitored.`);
+        if (config.managedIntegrationPackages?.some(monitoredPackage => monitoredPackage.packageId === packageId)) {
+            this.error(`The integration package ${packageId} is already being monitored.`);
         }
 
         this.log('');
 
         // Get the integration package designtime artifacts to monitor
-        ux.action.start(`Loading integration artifacts from package "${managedIntegrationPackage.packageId}"...`);
-        const integrationDesigntimeArtifacts = await getIntergrationPackageArtifacts(environment, managedIntegrationPackage.packageId);
+        ux.action.start(`Loading integration artifacts from package "${packageId}"...`);
+        const integrationDesigntimeArtifacts = await getPackageIntergrationArtifacts(environment, packageId);
         ux.action.stop();
 
         this.log('');
@@ -97,29 +103,31 @@ export default class AddPackage extends Command {
 
         // Update the configuration with the new managed integration package
         await setConfig({
-            ...config,
-            managedIntegrationPackages: [
-                ...config.managedIntegrationPackages ?? [],
-                {
-                    packageId: managedIntegrationPackage.packageId,
-                    monitoredArtifactIds: selectedIntegrationArtifactIds,
-                    ignoredArtifactIds: excludedArtifactIds,
-                },
-            ]
+            configuration: {
+                ...config,
+                managedIntegrationPackages: [
+                    ...config.managedIntegrationPackages ?? [],
+                    {
+                        packageId,
+                        monitoredArtifactIds: selectedIntegrationArtifactIds,
+                        ignoredArtifactIds: excludedArtifactIds,
+                    },
+                ],
+            }
         });
 
         this.log('');
 
         // Export the configurations for the selected artifacts
         ux.action.start(`Exporting integration artifact configurations...`);
-        const integrationArtifacts = await getIntergrationPackageArtifacts(environment, managedIntegrationPackage.packageId);
+        const integrationArtifacts = await getPackageIntergrationArtifacts(environment, packageId);
 
         let exportedConfigurations = 0;
 
         for (const selectedArtifact of selectedIntegrationArtifactIds) {
             // Get the artifact from the list of monitored artifacts
             const artifact = integrationArtifacts.find(artifact => artifact.Id === selectedArtifact);
-            if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${managedIntegrationPackage.packageId}".`);
+            if (!artifact) this.error(`Artifact "${selectedArtifact}" is not present in the integration package "${packageId}".`);
 
             // Get the configurations for the artifact
             const artifactConfigurations = await getIntegrationArtifactConfigurations({
@@ -132,7 +140,7 @@ export default class AddPackage extends Command {
 
             // Create the artifact configuration management file
             const createdAt = new Date().toISOString();
-            await createManagedArtifact(managedIntegrationPackage.packageId, {
+            await createManagedArtifact(packageId, {
                 _createdAt: createdAt,
                 artifactId: artifact.Id,
                 artifactConfigurations: [{
@@ -147,6 +155,6 @@ export default class AddPackage extends Command {
 
         ux.action.stop(`export complete!\n`);
 
-        this.log(`🎉 Successfully added ${exportedConfigurations} configurations from the "${managedIntegrationPackage.packageId}" integration package!`);
+        this.log(`🎉 Successfully added ${exportedConfigurations} configurations from the "${packageId}" integration package!`);
     }
 }

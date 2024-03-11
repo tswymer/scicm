@@ -48,7 +48,7 @@ export type SCICMConfig = {
 };
 
 function getConfigurationFilePath(projectPath: string | undefined = undefined) {
-    return join(projectPath ?? process.cwd(), 'cicm-config.json');
+    return join(projectPath ?? process.cwd(), 'scicm-config.json');
 }
 
 export async function getConfig() {
@@ -72,7 +72,12 @@ export async function getConfig() {
     return parsedConfiguration.data;
 }
 
-export async function setConfig(configuration: z.infer<typeof scicmConfigurationSchema>, projectPath: string | undefined = undefined) {
+type SetConfigParams = {
+    configuration: z.infer<typeof scicmConfigurationSchema>,
+    projectPath?: string,
+}
+
+export async function setConfig({ configuration, projectPath }: SetConfigParams) {
     // Create the path to the configuration file
     const configurationFilePath = getConfigurationFilePath(projectPath);
 
@@ -84,9 +89,24 @@ export async function setConfig(configuration: z.infer<typeof scicmConfiguration
     await writeFile(configurationFilePath, JSON.stringify(configuration, null, 2));
 }
 
-export function getEnvironment(config: z.infer<typeof scicmConfigurationSchema>, environmentAccountShortName: string) {
-    const environment = config.integrationEnvironments.find(environment => environment.accountShortName === environmentAccountShortName);
-    if (!environment) throw new Error(`Environment with accountShortName "${environmentAccountShortName}" not found.`);
+type GetEnvironmentParams = {
+    accountShortName: string,
+    config: z.infer<typeof scicmConfigurationSchema>,
+};
 
-    return environment;
+type GetEnvironmentResponse = {
+    environment: z.infer<typeof ciEnvironmentSchema>,
+    result: 'OK',
+} | {
+    result: 'UNKNOWN_ENVIRONMENT'
+};
+
+export function getEnvironment({ config, accountShortName }: GetEnvironmentParams): GetEnvironmentResponse {
+    const environment = config.integrationEnvironments.find(environment => environment.accountShortName === accountShortName);
+    if (!environment) return { result: 'UNKNOWN_ENVIRONMENT' };
+
+    return {
+        result: 'OK',
+        environment,
+    };
 }

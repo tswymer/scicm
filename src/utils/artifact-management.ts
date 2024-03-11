@@ -127,12 +127,19 @@ export async function pushConfigurationVersion({ artifactId, artifactVersion, co
     await writeFile(artifactConfigurationFilePath, JSON.stringify(localArtifactConfiguration, null, 2));
 }
 
-interface GetLatestLocalArtifactConfigurationsParams {
+type GetLatestLocalArtifactConfigurationsParams = {
     artifactId: string;
     packageId: string;
 }
 
-export async function getLatestLocalArtifactConfigurations({ artifactId, packageId }: GetLatestLocalArtifactConfigurationsParams) {
+type GetLatestLocalArtifactConfigurationsResponse = {
+    artifactConfiguration: Awaited<ReturnType<typeof getManagedArtifact>>['artifactConfigurations'][number];
+    result: 'OK';
+} | {
+    result: 'NO_LOCAL_CONFIGURATIONS';
+};
+
+export async function getLatestLocalArtifactConfigurations({ artifactId, packageId }: GetLatestLocalArtifactConfigurationsParams): Promise<GetLatestLocalArtifactConfigurationsResponse> {
     const artifactConfiguration = await getManagedArtifact({ packageId, artifactId });
 
     // Sort the artifact configurations by version
@@ -140,10 +147,13 @@ export async function getLatestLocalArtifactConfigurations({ artifactId, package
 
     // Get the latest artifact configurations by version
     const latestArtifactConfiguration = artifactConfiguration.artifactConfigurations.at(0);
-    if (!latestArtifactConfiguration) throw new Error(`No local configurations found for artifact "${artifactId}" from package "${packageId}".`);
+    if (!latestArtifactConfiguration) return { result: 'NO_LOCAL_CONFIGURATIONS' };
 
     // Sanity check that there is a version
     if (!latestArtifactConfiguration.artifactVersion) throw new Error(`No artifact version found for "${artifactId}" from package "${packageId}".`);
 
-    return latestArtifactConfiguration;
+    return {
+        artifactConfiguration: latestArtifactConfiguration,
+        result: 'OK',
+    };
 }

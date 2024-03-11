@@ -1,7 +1,7 @@
 import { select } from "@inquirer/prompts";
 import { z } from "zod";
 
-import { buildCIODataURL, getIntegrationPackages, getIntergrationPackageArtifacts } from "./cloud-integration.js";
+import { buildCIODataURL, getIntegrationPackages, getPackageIntergrationArtifacts } from "./cloud-integration.js";
 import { SCICMConfig, managedIntegrationPackageSchema } from "./scicm-configuration.js";
 
 type SelectAccountShortNameParams = {
@@ -49,6 +49,7 @@ type SelectManagedIntegrationPackageResponse = {
     managedIntegrationPackage: z.infer<typeof managedIntegrationPackageSchema>;
     result: 'OK';
 } | {
+    packageId: string;
     result: 'NOT_MONITORED';
 };
 
@@ -64,6 +65,7 @@ export async function selectManagedIntegrationPackage({ config, defaultPackageId
     const managedIntegrationPackage = config.managedIntegrationPackages?.find(monitoredPackage => monitoredPackage.packageId === packageId);
     if (!managedIntegrationPackage) return {
         result: 'NOT_MONITORED',
+        packageId,
     }
 
     return {
@@ -75,11 +77,11 @@ export async function selectManagedIntegrationPackage({ config, defaultPackageId
 type SelectIntegrationArtifactIdParams = {
     defaultArtifactId?: string;
     managedIntegrationPackage: z.infer<typeof managedIntegrationPackageSchema>;
-    remoteArtifacts: Awaited<ReturnType<typeof getIntergrationPackageArtifacts>>;
+    remoteArtifacts: Awaited<ReturnType<typeof getPackageIntergrationArtifacts>>;
 }
 
 type SelectIntegrationArtifactIdResponse = {
-    remoteArtifact: Awaited<ReturnType<typeof getIntergrationPackageArtifacts>>[number];
+    remoteArtifact: Awaited<ReturnType<typeof getPackageIntergrationArtifacts>>[number];
     result: 'OK';
 } | {
     result: 'NOT_MONITORED';

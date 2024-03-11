@@ -4,7 +4,7 @@ import { compareArtifactConfigurations } from '../utils/artifact-configuration.j
 import { getLatestLocalArtifactConfigurations, overwriteExistingConfigurationVersion, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
 import { selectAccountShortName, selectManagedIntegrationPackage, selectRemoteIntegrationArtifact } from '../utils/cli-utils.js';
-import { getIntegrationArtifactConfigurations, getIntegrationPackages, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
+import { getIntegrationArtifactConfigurations, getIntegrationPackages, getPackageIntergrationArtifacts } from '../utils/cloud-integration.js';
 import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 
 export default class UpdateConfiguration extends Command {
@@ -32,8 +32,19 @@ export default class UpdateConfiguration extends Command {
         console.assert(accountShortNameResult.result === 'OK');
         const { accountShortName } = accountShortNameResult;
 
-        const environment = getEnvironment(config, accountShortName);
-        const artifactVariables = await getArtifactVariables(accountShortName);
+        const getEnvironmentResult = getEnvironment({
+            config,
+            accountShortName,
+        });
+
+        if (getEnvironmentResult.result === 'UNKNOWN_ENVIRONMENT') this.error([
+            `The accountShortName "${accountShortName}" does not exist in the configuration file.`,
+        ].join('\n'));
+
+        console.assert(getEnvironmentResult.result === 'OK');
+        const { environment } = getEnvironmentResult;
+
+        const artifactVariables = await getArtifactVariables({ accountShortName });
 
         // Get the integration package to add from the user
         ux.action.start('Loading integration packages from SAP CI...');
@@ -56,7 +67,7 @@ export default class UpdateConfiguration extends Command {
 
         // Get the artifact to update the configurations for
         ux.action.start(`Loading integration artifacts for package "${managedIntegrationPackage.packageId}" from SAP CI...`);
-        const remoteArtifacts = await getIntergrationPackageArtifacts(environment, managedIntegrationPackage.packageId);
+        const remoteArtifacts = await getPackageIntergrationArtifacts(environment, managedIntegrationPackage.packageId);
         ux.action.stop();
 
         // Get the artifact to update the configurations for
@@ -78,10 +89,20 @@ export default class UpdateConfiguration extends Command {
         const { remoteArtifact } = remoteArtifactResult;
 
         // Get the local and remote configurtions for this artifact
-        const latestLocalConfigurations = await getLatestLocalArtifactConfigurations({
+        const latestLocalConfigurationsResult = await getLatestLocalArtifactConfigurations({
             packageId: managedIntegrationPackage.packageId,
             artifactId: remoteArtifact.Id
         });
+
+        if (latestLocalConfigurationsResult.result === 'NO_LOCAL_CONFIGURATIONS') this.error([
+            `No local configurations found for artifact "${remoteArtifact.Id}" in package "${managedIntegrationPackage.packageId}".\n`,
+            `Run the following command to add configurations for this artifact:`,
+            `@TODO`,
+        ].join('\n'));
+
+        console.assert(latestLocalConfigurationsResult.result === 'OK');
+        const { artifactConfiguration: latestLocalConfigurations } = latestLocalConfigurationsResult;
+
         const remoteConfigurations = await getIntegrationArtifactConfigurations({
             environment,
             artifactId: remoteArtifact.Id,

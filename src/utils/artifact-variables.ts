@@ -5,28 +5,32 @@ export type GetArtifactVariables = (accountShortName: string) => Record<string, 
 
 const integrationEnvironmentVariablesSchema = z.record(z.string(), z.string());
 
-export async function getArtifactVariables(accountShortName: string) {
-    const artifactVariablesPath = join(process.cwd(), 'artifact-variables.js');
+type GetArtifactVariablesParams = {
+  accountShortName: string;
+};
 
-    // Try to import the "artifact-Variables.js" file
-    const { getArtifactVariables } = await import(artifactVariablesPath) as { getArtifactVariables?: GetArtifactVariables };
+export async function getArtifactVariables({ accountShortName }: GetArtifactVariablesParams) {
+  const artifactVariablesPath = join(process.cwd(), 'artifact-variables.js');
 
-    if (!getArtifactVariables) {
-        throw new Error(`${artifactVariablesPath} does not export a "getArtifactVariables" function.`);
-    }
+  // Try to import the "artifact-Variables.js" file
+  const { getArtifactVariables } = await import(artifactVariablesPath) as { getArtifactVariables?: GetArtifactVariables };
 
-    // Execute the function to get the artifact variables, and parse the result
-    const artifactVariables = integrationEnvironmentVariablesSchema.safeParse(getArtifactVariables(accountShortName));
+  if (!getArtifactVariables) {
+    throw new Error(`${artifactVariablesPath} does not export a "getArtifactVariables" function.`);
+  }
 
-    // Check if the variables are valid
-    if (!artifactVariables.success) {
-        throw new Error([
-            `Failed to parse artifact variables from ${artifactVariablesPath}:`,
-            ...artifactVariables.error.errors.map(error => JSON.stringify(error, null, 2)),
-        ].join('\n'));
-    }
+  // Execute the function to get the artifact variables, and parse the result
+  const artifactVariables = integrationEnvironmentVariablesSchema.safeParse(getArtifactVariables(accountShortName));
 
-    return artifactVariables.data;
+  // Check if the variables are valid
+  if (!artifactVariables.success) {
+    throw new Error([
+      `Failed to parse artifact variables from ${artifactVariablesPath}:`,
+      ...artifactVariables.error.errors.map(error => JSON.stringify(error, null, 2)),
+    ].join('\n'));
+  }
+
+  return artifactVariables.data;
 }
 
 export const ARTIFACT_VARIABLES_TEMPLATE = `import "dotenv/config";

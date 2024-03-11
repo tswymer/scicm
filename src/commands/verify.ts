@@ -4,7 +4,7 @@ import { compareArtifactConfigurations } from '../utils/artifact-configuration.j
 import { getLatestLocalArtifactConfigurations, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
 import { selectAccountShortName } from '../utils/cli-utils.js';
-import { getIntegrationArtifactConfigurations, getIntergrationPackageArtifacts } from '../utils/cloud-integration.js';
+import { getIntegrationArtifactConfigurations, getPackageIntergrationArtifacts } from '../utils/cloud-integration.js';
 import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
 import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 
@@ -33,7 +33,14 @@ export default class VerifyConfiguration extends Command {
         console.assert(accountShortNameResult.result === 'OK');
         const { accountShortName } = accountShortNameResult;
 
-        const environment = getEnvironment(config, accountShortName);
+        const getEnvironmentResult = getEnvironment({ config, accountShortName });
+
+        if (getEnvironmentResult.result === 'UNKNOWN_ENVIRONMENT') this.error([
+            `The accountShortName "${accountShortName}" does not exist in the configuration file.`,
+        ].join('\n'));
+
+        console.assert(getEnvironmentResult.result === 'OK');
+        const { environment } = getEnvironmentResult;
 
         this.log('Verifying Cloud Integration Configurations...');
 
@@ -41,11 +48,11 @@ export default class VerifyConfiguration extends Command {
             this.log('');
 
             // Load the packageSecrets from the configuration file
-            const artifactVariables = await getArtifactVariables(accountShortName);
+            const artifactVariables = await getArtifactVariables({ accountShortName });
 
             ux.action.start(`Verifying configurations for package "${packageId}"...`);
 
-            const packageArtifacts = await getIntergrationPackageArtifacts(environment, packageId);
+            const packageArtifacts = await getPackageIntergrationArtifacts(environment, packageId);
 
             let comparisonCounter = 0;
             const warnings: string[] = [];
@@ -54,10 +61,20 @@ export default class VerifyConfiguration extends Command {
                 if (ignoredArtifactIds.includes(packageArtifact.Id)) continue;
 
                 // Get the local and remote configurtions for this artifact
-                const localConfigurations = await getLatestLocalArtifactConfigurations({
+                const localConfigurationsResult = await getLatestLocalArtifactConfigurations({
                     packageId,
                     artifactId: packageArtifact.Id,
                 });
+
+                if (localConfigurationsResult.result === 'NO_LOCAL_CONFIGURATIONS') this.error([
+                    `🚨 No local configurations found for artifact "${packageArtifact.Id}"!`,
+                    'Run the following command to update the local configurations:',
+                    `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${packageArtifact.Id}`,
+                ].join('\n'));
+
+                console.assert(localConfigurationsResult.result === 'OK');
+                const localConfigurations = localConfigurationsResult.artifactConfiguration;
+
                 const remoteConfigurations = await getIntegrationArtifactConfigurations({
                     environment,
                     artifactId: packageArtifact.Id,

@@ -54,7 +54,7 @@ export async function getIntegrationPackages(environment: z.infer<typeof ciEnvir
         .execute(await getExecutionDestination(environment));
 }
 
-export async function getIntergrationPackageArtifacts(environment: z.infer<typeof ciEnvironmentSchema>, integrationPackageId: string) {
+export async function getPackageIntergrationArtifacts(environment: z.infer<typeof ciEnvironmentSchema>, integrationPackageId: string) {
     const response = await integrationPackagesApi.requestBuilder()
         .getByKey(integrationPackageId)
         .appendPath('/IntegrationDesigntimeArtifacts')

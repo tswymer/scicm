@@ -97,8 +97,11 @@ export default class Init extends Command {
 
     // Write the initial environment file
     await setConfig({
-      integrationEnvironments: [initialEnvironment],
-    }, projectPath);
+      projectPath,
+      configuration: {
+        integrationEnvironments: [initialEnvironment],
+      },
+    });
 
     // Create a .gitignore file to exclude the .env file (secrets)
     const gitIngnoreFilePath = join(projectPath, '.gitignore');

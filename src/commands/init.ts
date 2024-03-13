@@ -1,4 +1,4 @@
-import { input, password, select } from '@inquirer/prompts';
+import { input, password } from '@inquirer/prompts';
 import { Command, Flags, ux } from '@oclif/core';
 import { exec } from 'node:child_process';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { ARTIFACT_VARIABLES_TEMPLATE } from '../utils/artifact-variables.js';
 import { testCredentials } from '../utils/cloud-integration.js';
-import { CIRegion, ciEnvironmentSchema, ciRegions, setConfig } from '../utils/scicm-configuration.js';
+import { ciEnvironmentSchema, setConfig } from '../utils/scicm-configuration.js';
 import { scicmSecretsSchema, setSCICMSecrets } from '../utils/scicm-secrets.js';
 
 export default class Init extends Command {
@@ -17,9 +17,7 @@ export default class Init extends Command {
     projectName: Flags.string({ description: 'name of the scicm project to create.' }),
     ciUsername: Flags.string({ description: 'username for the CI OData API.' }),
     ciPassword: Flags.string({ description: 'password for the CI OData API.' }),
-    ciAccountShortName: Flags.string({ description: 'account short name for the CI instance.' }),
-    ciSSLHost: Flags.string({ description: 'SSL host for the CI instance.' }),
-    ciRegion: Flags.string({ description: 'region for the CI instance.' }),
+    ciURL: Flags.string({ description: 'URL for the CI instance.' }),
   };
 
   public async run() {
@@ -64,15 +62,7 @@ export default class Init extends Command {
     this.log('  your URL would be: "https://l123456-tmn.hci.eu1.hana.ondemand.com".\n');
 
     const initialEnvironment = {
-      accountShortName: flags.ciAccountShortName ?? await input({ message: 'CI Account Short Name:' }),
-      sslHost: flags.ciSSLHost ?? await input({ message: 'CI SSL Host:' }),
-      region: (flags.ciRegion as CIRegion) ?? await select({
-        message: 'CI Region:',
-        choices: ciRegions.map(region => ({
-          value: region,
-          name: region,
-        })),
-      })
+      ciURL: flags.ciURL ?? await input({ message: 'CI URL:' }),
     } satisfies z.infer<typeof ciEnvironmentSchema>;
 
     this.log('');

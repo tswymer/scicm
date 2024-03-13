@@ -3,7 +3,7 @@ import { Command, Flags, ux } from '@oclif/core';
 
 import { createManagedArtifact } from '../../utils/artifact-management.js';
 import { getArtifactVariables } from '../../utils/artifact-variables.js';
-import { selectAccountShortName, selectManagedIntegrationPackage } from '../../utils/cli-utils.js';
+import { selectEnvironment, selectManagedIntegrationPackage } from '../../utils/cli-utils.js';
 import { getIntegrationArtifactConfigurations, getIntegrationPackages, getPackageIntergrationArtifacts } from '../../utils/cloud-integration.js';
 import { getConfig, getEnvironment, setConfig } from '../../utils/scicm-configuration.js';
 
@@ -11,7 +11,7 @@ export default class AddPackage extends Command {
     static description = 'Add an integration package to your Cloud Integration Configuration Manager (cicm) project.';
 
     static flags = {
-        accountShortName: Flags.string({ description: 'the accountShortName to verify configurations for' }),
+        ciURL: Flags.string({ description: 'the CI URL of the environment to add the package to.' }),
         packageId: Flags.string({ description: 'the id of the integration package to add.' }),
     }
 
@@ -22,30 +22,30 @@ export default class AddPackage extends Command {
 
         const config = await getConfig();
 
-        const accountShortNameResult = await selectAccountShortName({
+        const selectEnvironmentResult = await selectEnvironment({
             config,
-            defaultAccountShortName: flags.accountShortName,
+            defaultCIURL: flags.ciURL,
         });
 
-        if (accountShortNameResult.result === 'NOT_MONITORED') this.error([
-            `The accountShortName "${flags.accountShortName}" is not monitored in the configuration file.`
+        if (selectEnvironmentResult.result === 'NOT_MONITORED') this.error([
+            `The environment "${flags.ciURL}" is not monitored in the configuration file.`
         ].join('\n'));
 
-        console.assert(accountShortNameResult.result === 'OK');
-        const { accountShortName } = accountShortNameResult;
+        console.assert(selectEnvironmentResult.result === 'OK');
+        const { ciURL } = selectEnvironmentResult;
 
         this.log('');
 
-        const getEnvironmentResult = getEnvironment({ config, accountShortName });
+        const getEnvironmentResult = getEnvironment({ config, ciURL });
 
         if (getEnvironmentResult.result === 'UNKNOWN_ENVIRONMENT') this.error([
-            `The accountShortName "${accountShortName}" does not exist in the configuration file.`,
+            `The environment "${ciURL}" does not exist in the configuration file.`,
         ].join('\n'));
 
         console.assert(getEnvironmentResult.result === 'OK');
         const { environment } = getEnvironmentResult;
 
-        const artifactVariables = await getArtifactVariables({ accountShortName: environment.accountShortName });
+        const artifactVariables = await getArtifactVariables({ ciURL });
 
         // Get the integration package to add from the user
         ux.action.start('Loading integration packages from SAP CI...');

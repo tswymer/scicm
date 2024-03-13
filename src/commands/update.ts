@@ -3,13 +3,13 @@ import { Command, Flags, ux } from '@oclif/core';
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, getLocallyManagedArtifact, overwriteExistingConfigurationVersion, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
-import { selectAccountShortName, selectManagedIntegrationPackage, selectRemoteIntegrationArtifact } from '../utils/cli-utils.js';
+import { selectEnvironment, selectManagedIntegrationPackage, selectRemoteIntegrationArtifact } from '../utils/cli-utils.js';
 import { getIntegrationArtifactConfigurations, getIntegrationPackages, getPackageIntergrationArtifacts } from '../utils/cloud-integration.js';
 import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
 
 export default class UpdateConfiguration extends Command {
     static flags = {
-        accountShortName: Flags.string({ description: 'the accountShortName to verify configurations for' }),
+        ciURL: Flags.string({ description: 'the CI URL of the environment to update.' }),
         packageId: Flags.string({ description: 'the integration packageId of the artifact to update.' }),
         artifactId: Flags.string({ description: 'the artifactId of the artifact to update.' }),
         force: Flags.boolean({ char: 'f', description: 'force the update of the artifact configuration.' }),
@@ -19,32 +19,32 @@ export default class UpdateConfiguration extends Command {
         const { flags } = await this.parse(UpdateConfiguration);
         const config = await getConfig();
 
-        // Get the accountShortName from the user
-        const accountShortNameResult = await selectAccountShortName({
+        // Get the environment from the user
+        const selectEnvironmentResult = await selectEnvironment({
             config,
-            defaultAccountShortName: flags.accountShortName,
+            defaultCIURL: flags.ciURL,
         });
 
-        if (accountShortNameResult.result === 'NOT_MONITORED') this.error([
-            `The accountShortName "${flags.accountShortName}" is not monitored in the configuration file.`
+        if (selectEnvironmentResult.result === 'NOT_MONITORED') this.error([
+            `The environment "${flags.ciURL}" is not monitored in the configuration file.`
         ].join('\n'));
 
-        console.assert(accountShortNameResult.result === 'OK');
-        const { accountShortName } = accountShortNameResult;
+        console.assert(selectEnvironmentResult.result === 'OK');
+        const { ciURL } = selectEnvironmentResult;
 
         const getEnvironmentResult = getEnvironment({
             config,
-            accountShortName,
+            ciURL,
         });
 
         if (getEnvironmentResult.result === 'UNKNOWN_ENVIRONMENT') this.error([
-            `The accountShortName "${accountShortName}" does not exist in the configuration file.`,
+            `The environment "${ciURL}" does not exist in the configuration file.`,
         ].join('\n'));
 
         console.assert(getEnvironmentResult.result === 'OK');
         const { environment } = getEnvironmentResult;
 
-        const artifactVariables = await getArtifactVariables({ accountShortName });
+        const artifactVariables = await getArtifactVariables({ ciURL });
 
         // Get the integration package to add from the user
         ux.action.start('Loading integration packages from SAP CI...');
@@ -169,7 +169,7 @@ export default class UpdateConfiguration extends Command {
                 this.error([
                     `🚨 The local artifact configuration for "${remoteArtifact.Id}" is not safe to update, as it's local configuration differs from the remote one, even though their version (v.${remoteArtifact.Version})is the same. (${configurationComparison.result})`,
                     `Run the command with the --force flag to update the local configuration:`,
-                    `npx scicm update ${accountShortName} ${managedIntegrationPackage.packageId} ${remoteArtifact.Id} --force`,
+                    `npx scicm update ${ciURL} ${managedIntegrationPackage.packageId} ${remoteArtifact.Id} --force`,
                 ].join('\n'));
             }
 

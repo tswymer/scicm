@@ -4,38 +4,34 @@ import { z } from "zod";
 import { buildCIODataURL, getIntegrationPackages, getPackageIntergrationArtifacts } from "./cloud-integration.js";
 import { SCICMConfig, managedIntegrationPackageSchema } from "./scicm-configuration.js";
 
-type SelectAccountShortNameParams = {
+type SelectEnvironmentParams = {
     config: SCICMConfig;
-    defaultAccountShortName?: string;
+    defaultCIURL?: string;
 }
 
-type SelectAccountShortNameResponse = {
-    accountShortName: string;
+type SelectEnvironmentResponse = {
+    ciURL: string;
     result: 'OK';
 } | {
     result: 'NOT_MONITORED';
 };
 
-export async function selectAccountShortName({ config, defaultAccountShortName }: SelectAccountShortNameParams): Promise<SelectAccountShortNameResponse> {
-    const accountShortName = defaultAccountShortName ?? await select({
+export async function selectEnvironment({ config, defaultCIURL }: SelectEnvironmentParams): Promise<SelectEnvironmentResponse> {
+    const ciURL = defaultCIURL ?? await select({
         message: 'Select an integration environment:',
         choices: config.integrationEnvironments.map(environment => ({
-            value: environment.accountShortName,
-            name: `${buildCIODataURL({
-                accountShortName: environment.accountShortName,
-                region: environment.region,
-                sslHost: environment.sslHost,
-            })}`,
+            value: environment.ciURL,
+            name: `${buildCIODataURL({ ciURL: environment.ciURL })}`,
         })),
     });
 
-    if (!config.integrationEnvironments.some(environment => environment.accountShortName === accountShortName)) return {
+    if (!config.integrationEnvironments.some(environment => environment.ciURL === ciURL)) return {
         result: 'NOT_MONITORED',
     }
 
     return {
         result: 'OK',
-        accountShortName,
+        ciURL,
     }
 }
 

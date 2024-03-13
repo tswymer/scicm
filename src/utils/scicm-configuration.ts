@@ -23,12 +23,8 @@ export const ciRegions = [
     'us4.hana.ondemand.com'
 ] as const;
 
-const ciRegion = z.enum(ciRegions);
-
 export const ciEnvironmentSchema = z.object({
-    accountShortName: z.string(),
-    sslHost: z.string(),
-    region: ciRegion,
+    ciURL: z.string(),
 });
 
 export const managedIntegrationPackageSchema = z.object({
@@ -89,7 +85,7 @@ export async function setConfig({ configuration, projectPath }: SetConfigParams)
 }
 
 type GetEnvironmentParams = {
-    accountShortName: string,
+    ciURL: string
     config: z.infer<typeof scicmConfigurationSchema>,
 };
 
@@ -100,8 +96,8 @@ type GetEnvironmentResponse = {
     result: 'UNKNOWN_ENVIRONMENT'
 };
 
-export function getEnvironment({ config, accountShortName }: GetEnvironmentParams): GetEnvironmentResponse {
-    const environment = config.integrationEnvironments.find(environment => environment.accountShortName === accountShortName);
+export function getEnvironment({ config, ciURL }: GetEnvironmentParams): GetEnvironmentResponse {
+    const environment = config.integrationEnvironments.find(environment => environment.ciURL === ciURL);
     if (!environment) return { result: 'UNKNOWN_ENVIRONMENT' };
 
     return {

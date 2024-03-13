@@ -32,11 +32,11 @@ scicm provides a command line interface (CLI) to manage the configuration values
 Initialize a new SAP Cloud Integration Configuration Manager (scicm) project.
 
 USAGE
-  $ scicm init [--projectName <value>] [--ciUsername <value>] [--ciPassword <value>] [--ciAccountShortName <value>] [--ciSSLHost <value>]
+  $ scicm init [--projectName <value>] [--ciUsername <value>] [--ciPassword <value>] [--ciURL <value>] [--ciSSLHost <value>]
     [--ciRegion <value>]
 
 FLAGS
-  --ciAccountShortName=<value>  account short name for the CI instance.
+  --ciURL=<value>               url for the CI instance.
   --ciPassword=<value>          password for the CI OData API.
   --ciRegion=<value>            region for the CI instance.
   --ciSSLHost=<value>           SSL host for the CI instance.

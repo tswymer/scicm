@@ -3,7 +3,7 @@ import { Command, Flags, ux } from '@oclif/core';
 import { compareArtifactConfigurations } from '../utils/artifact-configuration.js';
 import { getLatestLocalArtifactConfigurations, getLocallyManagedArtifact, pushConfigurationVersion } from '../utils/artifact-management.js';
 import { getArtifactVariables } from '../utils/artifact-variables.js';
-import { selectAccountShortName } from '../utils/cli-utils.js';
+import { selectEnvironment } from '../utils/cli-utils.js';
 import { getIntegrationArtifactConfigurations, getPackageIntergrationArtifacts } from '../utils/cloud-integration.js';
 import exhaustiveSwitchGuard from '../utils/exhaustive-switch-guard.js';
 import { getConfig, getEnvironment } from '../utils/scicm-configuration.js';
@@ -12,7 +12,7 @@ export default class VerifyConfiguration extends Command {
     static description = 'Verfify the artifact configurations for a Cloud Integration environment.';
 
     static flags = {
-        accountShortName: Flags.string({ description: 'the accountShortName to verify configurations for' }),
+        ciURL: Flags.string({ description: 'the CI URL of the environment to verify.' }),
         safeUpdate: Flags.boolean({ description: 'Update the local artifact configuration versions, as long as their configurations are unchanged' }),
     }
 
@@ -21,22 +21,22 @@ export default class VerifyConfiguration extends Command {
 
         const config = await getConfig();
 
-        const accountShortNameResult = await selectAccountShortName({
+        const selectEnvironmentResult = await selectEnvironment({
             config,
-            defaultAccountShortName: flags.accountShortName,
+            defaultCIURL: flags.ciURL,
         });
 
-        if (accountShortNameResult.result === 'NOT_MONITORED') this.error([
-            `The accountShortName "${flags.accountShortName}" is not monitored in the configuration file.`
+        if (selectEnvironmentResult.result === 'NOT_MONITORED') this.error([
+            `The environment "${flags.ciURL}" is not monitored in the configuration file.`
         ].join('\n'));
 
-        console.assert(accountShortNameResult.result === 'OK');
-        const { accountShortName } = accountShortNameResult;
+        console.assert(selectEnvironmentResult.result === 'OK');
+        const { ciURL } = selectEnvironmentResult;
 
-        const getEnvironmentResult = getEnvironment({ config, accountShortName });
+        const getEnvironmentResult = getEnvironment({ config, ciURL });
 
         if (getEnvironmentResult.result === 'UNKNOWN_ENVIRONMENT') this.error([
-            `The accountShortName "${accountShortName}" does not exist in the configuration file.`,
+            `The environment "${ciURL}" does not exist in the configuration file.`,
         ].join('\n'));
 
         console.assert(getEnvironmentResult.result === 'OK');
@@ -48,7 +48,7 @@ export default class VerifyConfiguration extends Command {
             this.log('');
 
             // Load the packageSecrets from the configuration file
-            const artifactVariables = await getArtifactVariables({ accountShortName });
+            const artifactVariables = await getArtifactVariables({ ciURL });
 
             ux.action.start(`Verifying configurations for package "${packageId}"...`);
 
@@ -103,9 +103,9 @@ export default class VerifyConfiguration extends Command {
                     this.error(new Error([
                         `🚨 Remote artifact version "${artifact.Version}" for artifact "${artifact.Id}" does not match latest local configuration version "${localConfigurations.artifactVersion}"!`,
                         'Run the following command to update the local configurations to the newest version:',
-                        `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${artifact.Id}`,
+                        `npx scicm update --ciURL=${ciURL} --packageId=${packageId} --artifactId=${artifact.Id}`,
                         'Alternatively, run this command with the "--safeUpdate" flag to update the local configuration versions, as long as their configurations are unchanged:',
-                        `npx scicm verify --accountShortName=${accountShortName} --safeUpdate`,
+                        `npx scicm verify --ciURL=${ciURL} --safeUpdate`,
                     ].join('\n')));
                 }
 
@@ -129,7 +129,7 @@ export default class VerifyConfiguration extends Command {
                                 `Local Value:\t${localValue}`,
                                 `Remote Value:\t${remoteValue}`,
                                 '\nIf you are sure the remote configuration is correct, you can force-update the local configuration with:',
-                                `npx scicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${artifact.Id}`,
+                                `npx scicm update --force --ciURL=${ciURL} --packageId=${packageId} --artifactId=${artifact.Id}`,
                             ].join('\n')),)
                         }
 
@@ -138,7 +138,7 @@ export default class VerifyConfiguration extends Command {
                             `The local configuration for artifact "${artifact.Id}" (v.${artifact.Version}) is out of date!`,
                             `The remote artifact is now updated with new different configurations on (v${artifact.Version}).`,
                             'Run the following command to update the local configurations to the newest version:',
-                            `npx scicm update --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${artifact.Id}`,
+                            `npx scicm update --ciURL=${ciURL} --packageId=${packageId} --artifactId=${artifact.Id}`,
                         ].join('\n')));
 
                     }
@@ -157,7 +157,7 @@ export default class VerifyConfiguration extends Command {
                             `Failed to safely update local configurations for artifact "${artifact.Id}"!`,
                             `The local configurations (v.${localConfigurations.artifactVersion}) is already newer than the remote configurations (v.${remoteConfigurations.artifactVersion}).`,
                             '\nIf you are sure the remote configuration is correct, you can force-update the local configuration with:\n',
-                            `npx scicm update --force --accountShortName=${accountShortName} --packageId=${packageId} --artifactId=${artifact.Id}`,
+                            `npx scicm update --force --ciURL=${ciURL} --packageId=${packageId} --artifactId=${artifact.Id}`,
                         ].join('\n')));
                     }
 

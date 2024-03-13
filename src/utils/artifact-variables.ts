@@ -1,15 +1,15 @@
 import { join } from "node:path";
 import { z } from "zod";
 
-export type GetArtifactVariables = (accountShortName: string) => Record<string, string>;
+export type GetArtifactVariables = (ciURL: string) => Record<string, string>;
 
 const integrationEnvironmentVariablesSchema = z.record(z.string(), z.string());
 
 type GetArtifactVariablesParams = {
-  accountShortName: string;
+  ciURL: string;
 };
 
-export async function getArtifactVariables({ accountShortName }: GetArtifactVariablesParams) {
+export async function getArtifactVariables({ ciURL }: GetArtifactVariablesParams) {
   const artifactVariablesPath = join(process.cwd(), 'artifact-variables.js');
 
   // Try to import the "artifact-Variables.js" file
@@ -20,7 +20,7 @@ export async function getArtifactVariables({ accountShortName }: GetArtifactVari
   }
 
   // Execute the function to get the artifact variables, and parse the result
-  const artifactVariables = integrationEnvironmentVariablesSchema.safeParse(getArtifactVariables(accountShortName));
+  const artifactVariables = integrationEnvironmentVariablesSchema.safeParse(getArtifactVariables(ciURL));
 
   // Check if the variables are valid
   if (!artifactVariables.success) {
@@ -36,8 +36,8 @@ export async function getArtifactVariables({ accountShortName }: GetArtifactVari
 export const ARTIFACT_VARIABLES_TEMPLATE = `import "dotenv/config";
 
 /** @type {import('scicm/dist/utils/artifact-variables').GetArtifactVariables} */
-export function getArtifactVariables(accountShortName) {
-  console.log('Creating artifact variables for:', accountShortName)
+export function getArtifactVariables(ciURL) {
+  console.log('Creating artifact variables for:', ciURL)
 
   return {
     MY_VARIABLE_KEY: 'MY_VARIABLE_VALUE',

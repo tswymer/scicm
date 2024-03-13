@@ -6,8 +6,10 @@ import { getSCICMSecrets, scicmSecretsSchema } from "./scicm-secrets.js";
 
 const { integrationPackagesApi, integrationDesigntimeArtifactsApi } = integrationContent();
 
-export function buildCIODataURL({ accountShortName, region, sslHost }: z.infer<typeof ciEnvironmentSchema>) {
-    return `https://${accountShortName}-tmn.${sslHost}.${region}/api/v1`;
+export function buildCIODataURL({ ciURL }: z.infer<typeof ciEnvironmentSchema>) {
+    if (ciURL.startsWith('https://')) return `${ciURL}/api/v1`;
+
+    return `https://${ciURL}/api/v1`;
 }
 
 const integrationArtifactSchema = z.object({
